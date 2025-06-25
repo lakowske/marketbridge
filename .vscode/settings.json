@@ -1,0 +1,59 @@
+{
+    "python.testing.pytestEnabled": true,
+    "python.testing.unittestEnabled": false,
+    "python.testing.pytestArgs": [
+        "tests"
+    ],
+    "python.testing.autoTestDiscoverOnSaveEnabled": true,
+  "python.defaultInterpreterPath": "./venv/bin/python",
+
+  // Disable all default linting
+  "python.linting.enabled": true,
+  "python.linting.pylintEnabled": false,
+  "python.linting.banditEnabled": false,
+  "python.linting.prospectorEnabled": false,
+  "python.linting.pycodestyleEnabled": false,
+  "python.linting.pydocstyleEnabled": false,
+  "python.linting.pylamaEnabled": false,
+
+  // Enable only your chosen linters
+  "python.linting.flake8Enabled": true,
+  "python.linting.mypyEnabled": true,
+
+  // Point to project-specific executables (if using venv)
+  "python.linting.flake8Path": "./venv/bin/flake8",
+  "python.linting.mypyPath": "./venv/bin/mypy",
+
+  // Formatting with Black
+  "python.formatting.provider": "black",
+  "python.formatting.blackPath": "./venv/bin/black",
+  "editor.formatOnSave": true,
+
+  // Import sorting with isort
+  "python.sortImports.path": "./venv/bin/isort",
+  "editor.codeActionsOnSave": {
+    "source.organizeImports": "always"
+  },
+
+  // Ensure VS Code reads pyproject.toml
+  "python.linting.flake8Args": ["--config=pyproject.toml"],
+  "python.formatting.blackArgs": ["--config", "pyproject.toml"],
+
+  // Disable other formatters that might interfere
+  "python.formatting.autopep8Path": "",
+  "python.formatting.yapfPath": "",
+
+  // Markdown settings
+  "[markdown]": {
+    "editor.defaultFormatter": "DavidAnson.vscode-markdownlint",
+    "editor.formatOnSave": true,
+    "editor.rulers": [80],
+    "editor.wordWrap": "wordWrapColumn",
+    "editor.wordWrapColumn": 80
+  },
+
+  // Markdownlint configuration
+  "markdownlint.config": {
+    "extends": ".markdownlint.json"
+  }
+}
