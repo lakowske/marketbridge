@@ -93,6 +93,7 @@ omit = [
     "*/web_server.py",
     "*/actions/build.py",
     "*/core.py",
+    "scripts/*",
     "test_*.py",
     "*_test.py",
 ]
@@ -163,6 +164,6 @@ markers = [
 ]
 
 [tool.bandit]
-exclude_dirs = ["tests", ".venv", "build", "dist"]
+exclude_dirs = ["tests", ".venv", "build", "dist", "scripts"]
 skips = ["B101"]
 targets = ["src"]
