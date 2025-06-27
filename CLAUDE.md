@@ -55,6 +55,29 @@ clean-python/
 - `pre-commit install` - Install pre-commit hooks
 - `pre-commit run --all-files` - Run all pre-commit checks
 
+## Server Management Commands
+
+Use the professional CLI server management tool for running MarketBridge:
+
+- `python scripts/manage_server.py start` - Start server in background
+- `python scripts/manage_server.py stop` - Stop server gracefully
+- `python scripts/manage_server.py restart` - Restart server
+- `python scripts/manage_server.py status` - Show server status
+- `python scripts/manage_server.py -v status` - Show detailed status with memory usage
+- `python scripts/manage_server.py logs` - Show recent logs (last 50 lines)
+- `python scripts/manage_server.py logs -n 100` - Show last 100 lines of logs
+- `python scripts/manage_server.py logs --follow` - Follow logs in real-time
+- `python scripts/manage_server.py logs --error` - Show error logs
+- `python scripts/manage_server.py --help` - Show all available options
+
+### Server Management Features
+
+- **Background process management** with PID file tracking
+- **Graceful shutdown** handling (SIGTERM → SIGKILL if needed)
+- **Automatic log redirection** to `logs/marketbridge.log` and `logs/marketbridge_error.log`
+- **Colorized CLI output** for better user experience
+- **Process monitoring** with memory usage and status information
+
 ## Logging Standards
 
 All code should implement comprehensive logging with the following requirements:

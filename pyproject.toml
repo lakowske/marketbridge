@@ -25,6 +25,8 @@ dependencies = [
     "requests",
     "websockets>=12.0",
     "ibapi>=9.81.1",
+    "aiohttp>=3.8.0",
+    "aiofiles>=22.1.0",
 ]
 
 [tool.setuptools.packages.find]
@@ -87,6 +89,12 @@ omit = [
     "*/.venv/*",
     "*/build/*",
     "*/dist/*",
+    "*/combined_server.py",
+    "*/web_server.py",
+    "*/actions/build.py",
+    "*/core.py",
+    "test_*.py",
+    "*_test.py",
 ]
 
 [tool.coverage.report]
@@ -139,7 +147,7 @@ line_length = 88
 src_paths = ["src", "tests"]
 
 [tool.pytest.ini_options]
-testpaths = ["tests"]
+testpaths = ["tests/unit", "tests/integration"]
 python_files = ["test_*.py", "*_test.py"]
 python_classes = ["Test*"]
 python_functions = ["test_*"]
@@ -151,6 +159,7 @@ addopts = [
 markers = [
     "slow: marks tests as slow (deselect with '-m \"not slow\"')",
     "integration: marks tests as integration tests",
+    "e2e: marks tests as end-to-end tests (excluded by default)",
 ]
 
 [tool.bandit]
