@@ -8,6 +8,7 @@ import logging
 import signal
 import sys
 from pathlib import Path
+from typing import List, Optional
 
 from .ib_websocket_bridge import IBWebSocketBridge
 from .web_server import WebServer
@@ -25,8 +26,8 @@ class CombinedServer:
         # Web server config
         web_host: str = "localhost",
         web_port: int = 8080,
-        web_root: str = None,
-        log_dir: str = None,
+        web_root: Optional[str] = None,
+        log_dir: Optional[str] = None,
         enable_cors: bool = True,
     ):
         self.ib_host = ib_host
@@ -39,9 +40,9 @@ class CombinedServer:
         self.enable_cors = enable_cors
 
         # Components
-        self.bridge = None
-        self.web_server = None
-        self.tasks = []
+        self.bridge: Optional[IBWebSocketBridge] = None
+        self.web_server: Optional[WebServer] = None
+        self.tasks: List[asyncio.Task] = []
 
         # Shutdown control
         self.shutdown_event = asyncio.Event()
@@ -54,12 +55,13 @@ class CombinedServer:
         # Set log directory if not provided
         if self.log_dir is None:
             project_root = Path(__file__).parent.parent.parent
-            self.log_dir = project_root / "logs"
+            log_dir_path = project_root / "logs"
         else:
-            self.log_dir = Path(self.log_dir)
+            log_dir_path = Path(self.log_dir)
 
         # Ensure log directory exists
-        self.log_dir.mkdir(parents=True, exist_ok=True)
+        log_dir_path.mkdir(parents=True, exist_ok=True)
+        self.log_dir = str(log_dir_path)
 
         # Setup main logger
         self.logger = logging.getLogger("marketbridge.combined")
@@ -78,7 +80,7 @@ class CombinedServer:
         self.logger.addHandler(console_handler)
 
         # File handler
-        log_file = self.log_dir / "combined_server.log"
+        log_file = Path(self.log_dir) / "combined_server.log"
         file_handler = logging.handlers.RotatingFileHandler(
             log_file, maxBytes=10 * 1024 * 1024, backupCount=5, encoding="utf-8"  # 10MB
         )

@@ -472,7 +472,7 @@ class IBWebSocketBridge:
         self.ws_port = ws_port
 
         # Message queue for thread-safe communication
-        self.message_queue = queue.Queue(maxsize=10000)
+        self.message_queue: queue.Queue = queue.Queue(maxsize=10000)
 
         # WebSocket clients
         self.websocket_clients = set()
@@ -979,7 +979,8 @@ class IBWebSocketBridge:
                     "No valid order ID available. Connection to IB may not be established."
                 )
                 return
-            self.wrapper.next_order_id += 1
+            if self.wrapper.next_order_id is not None:
+                self.wrapper.next_order_id += 1
 
             self.client.placeOrder(order_id, contract, order)
             logger.info(

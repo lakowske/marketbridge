@@ -9,7 +9,7 @@ Provides start, stop, restart, status, and log management functionality.
 import argparse
 import os
 import signal
-import subprocess
+import subprocess  # nosec B404 # Used for controlled server management
 import sys
 import time
 from datetime import datetime
@@ -47,8 +47,10 @@ class ServerManager:
         self.server_script = self.project_root / "run_server.py"
 
         # Virtual environment python
-        self.python_exe = self.project_root / ".venv" / "bin" / "python"
-        if not self.python_exe.exists():
+        venv_python = self.project_root / ".venv" / "bin" / "python"
+        if venv_python.exists():
+            self.python_exe = str(venv_python)
+        else:
             self.python_exe = "python3"  # Fallback to system python
 
     def _print_status(self, message, status="info"):
@@ -122,7 +124,7 @@ class ServerManager:
                 log_out.write(f"\n--- MarketBridge started at {timestamp} ---\n")
                 log_out.flush()
 
-                process = subprocess.Popen(
+                process = subprocess.Popen(  # nosec B603 # Controlled server startup with validated paths
                     [str(self.python_exe), str(self.server_script)],
                     cwd=str(self.project_root),
                     stdout=log_out,
@@ -268,13 +270,15 @@ class ServerManager:
             self._print_status(f"Following {log_type} (Ctrl+C to stop)...", "info")
             try:
                 # Use tail -f equivalent
-                subprocess.run(["tail", "-f", str(log_file)])
+                subprocess.run(
+                    ["tail", "-f", str(log_file)]
+                )  # nosec B607, B603 # Safe use of tail command with validated file path
             except KeyboardInterrupt:
                 self._print_status("Stopped following logs", "info")
         else:
             self._print_status(f"Showing last {lines} lines of {log_type}:", "info")
             try:
-                result = subprocess.run(
+                result = subprocess.run(  # nosec B607, B603 # Safe use of tail command with validated file path
                     ["tail", "-n", str(lines), str(log_file)],
                     capture_output=True,
                     text=True,
