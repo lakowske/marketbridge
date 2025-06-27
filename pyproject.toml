@@ -52,6 +52,7 @@ dev = [
     "mypy>=1.0.0",
     "isort>=5.0.0",
     "bandit>=1.7.0",
+    "playwright>=1.40.0",       # Browser automation
 ]
 
 [project.urls]
@@ -94,6 +95,8 @@ omit = [
     "*/actions/build.py",
     "*/core.py",
     "scripts/*",
+    "playwright/*",
+    "playwright_snippets/*",
     "test_*.py",
     "*_test.py",
 ]
@@ -164,6 +167,6 @@ markers = [
 ]
 
 [tool.bandit]
-exclude_dirs = ["tests", ".venv", "build", "dist", "scripts"]
+exclude_dirs = ["tests", ".venv", "build", "dist", "scripts", "playwright", "playwright_snippets"]
 skips = ["B101"]
 targets = ["src"]
