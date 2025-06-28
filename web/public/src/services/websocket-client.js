@@ -168,9 +168,10 @@ class WebSocketClient {
         }
     }
 
-    updateConnectionStatus(status) {
-        const statusIndicator = document.getElementById('status-indicator');
-        const statusText = document.getElementById('status-text');
+    updateConnectionStatus(status, isIBStatus = false) {
+        const prefix = isIBStatus ? 'ib' : 'ws';
+        const statusIndicator = document.getElementById(`${prefix}-status-indicator`);
+        const statusText = document.getElementById(`${prefix}-status-text`);
 
         if (statusIndicator && statusText) {
             // Remove all status classes
@@ -179,31 +180,46 @@ class WebSocketClient {
             switch (status) {
                 case 'connected':
                     statusIndicator.classList.add('connected');
-                    statusText.textContent = 'Connected';
+                    statusText.textContent = isIBStatus ? 'IB: Connected' : 'WebSocket: Connected';
                     break;
                 case 'connecting':
                     statusIndicator.classList.add('connecting');
-                    statusText.textContent = 'Connecting...';
+                    statusText.textContent = isIBStatus ? 'IB: Connecting...' : 'WebSocket: Connecting...';
                     break;
                 case 'disconnected':
-                    statusText.textContent = 'Disconnected';
+                    statusText.textContent = isIBStatus ? 'IB: Not Connected' : 'WebSocket: Disconnected';
                     break;
                 case 'failed':
-                    statusText.textContent = 'Connection Failed';
+                    statusText.textContent = isIBStatus ? 'IB: Connection Failed' : 'WebSocket: Connection Failed';
                     break;
             }
         }
     }
 
     // Market data subscription methods
-    subscribeMarketData(symbol, instrumentType = 'stock', exchange = 'SMART', currency = 'USD') {
+    subscribeMarketData(symbol, instrumentType = 'stock', futuresParams = {}) {
+        // Build base message
         const message = {
             command: 'subscribe_market_data',
             symbol: symbol.toUpperCase(),
             instrument_type: instrumentType,
-            exchange,
-            currency
+            exchange: futuresParams.exchange || 'SMART',
+            currency: 'USD'
         };
+
+        // Add futures-specific parameters if applicable
+        if (instrumentType === 'future') {
+            if (futuresParams.contractMonth) {
+                message.expiry = futuresParams.contractMonth;
+            }
+            if (futuresParams.lastTradeDate) {
+                message.last_trade_date = futuresParams.lastTradeDate;
+            }
+            // Default to CME for futures if no exchange specified
+            if (!futuresParams.exchange) {
+                message.exchange = 'CME';
+            }
+        }
 
         const subscriptionKey = `${symbol}_${instrumentType}_market_data`;
         this.pendingSubscriptions.set(subscriptionKey, message);
@@ -211,12 +227,27 @@ class WebSocketClient {
         return this.send(message);
     }
 
-    subscribeTimeAndSales(symbol, instrumentType = 'stock') {
+    subscribeTimeAndSales(symbol, instrumentType = 'stock', futuresParams = {}) {
         const message = {
             command: 'subscribe_time_and_sales',
             symbol: symbol.toUpperCase(),
-            instrument_type: instrumentType
+            instrument_type: instrumentType,
+            exchange: futuresParams.exchange || 'SMART',
+            currency: 'USD'
         };
+
+        // Add futures-specific parameters if applicable
+        if (instrumentType === 'future') {
+            if (futuresParams.contractMonth) {
+                message.expiry = futuresParams.contractMonth;
+            }
+            if (futuresParams.lastTradeDate) {
+                message.last_trade_date = futuresParams.lastTradeDate;
+            }
+            if (!futuresParams.exchange) {
+                message.exchange = 'CME';
+            }
+        }
 
         const subscriptionKey = `${symbol}_${instrumentType}_time_and_sales`;
         this.pendingSubscriptions.set(subscriptionKey, message);
@@ -224,12 +255,27 @@ class WebSocketClient {
         return this.send(message);
     }
 
-    subscribeBidAsk(symbol, instrumentType = 'stock') {
+    subscribeBidAsk(symbol, instrumentType = 'stock', futuresParams = {}) {
         const message = {
             command: 'subscribe_bid_ask',
             symbol: symbol.toUpperCase(),
-            instrument_type: instrumentType
+            instrument_type: instrumentType,
+            exchange: futuresParams.exchange || 'SMART',
+            currency: 'USD'
         };
+
+        // Add futures-specific parameters if applicable
+        if (instrumentType === 'future') {
+            if (futuresParams.contractMonth) {
+                message.expiry = futuresParams.contractMonth;
+            }
+            if (futuresParams.lastTradeDate) {
+                message.last_trade_date = futuresParams.lastTradeDate;
+            }
+            if (!futuresParams.exchange) {
+                message.exchange = 'CME';
+            }
+        }
 
         const subscriptionKey = `${symbol}_${instrumentType}_bid_ask`;
         this.pendingSubscriptions.set(subscriptionKey, message);

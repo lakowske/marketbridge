@@ -12,9 +12,15 @@
     <div id="app">
         <header class="header">
             <h1>MarketBridge</h1>
-            <div class="connection-status" id="connection-status">
-                <span class="status-indicator" id="status-indicator"></span>
-                <span class="status-text" id="status-text">Disconnected</span>
+            <div class="connection-statuses">
+                <div class="connection-status" id="ws-connection-status">
+                    <span class="status-indicator" id="ws-status-indicator"></span>
+                    <span class="status-text" id="ws-status-text">WebSocket: Disconnected</span>
+                </div>
+                <div class="connection-status" id="ib-connection-status">
+                    <span class="status-indicator" id="ib-status-indicator"></span>
+                    <span class="status-text" id="ib-status-text">IB: Not Connected</span>
+                </div>
             </div>
         </header>
 
@@ -47,6 +53,36 @@
                                 <option value="time_and_sales">Time & Sales</option>
                                 <option value="bid_ask">Bid/Ask Ticks</option>
                             </select>
+                        </div>
+
+                        <!-- Futures-specific fields (hidden by default) -->
+                        <div id="futures-details" class="futures-details" style="display: none;">
+                            <div class="form-group">
+                                <label for="exchange">Exchange:</label>
+                                <select id="exchange" name="exchange">
+                                    <option value="CME">CME (Chicago Mercantile Exchange)</option>
+                                    <option value="NYMEX">NYMEX (New York Mercantile Exchange)</option>
+                                    <option value="COMEX">COMEX (Commodity Exchange)</option>
+                                    <option value="CBOT">CBOT (Chicago Board of Trade)</option>
+                                    <option value="ICE">ICE (Intercontinental Exchange)</option>
+                                    <option value="EUREX">EUREX (European Exchange)</option>
+                                </select>
+                            </div>
+
+                            <div class="form-group">
+                                <label for="contract-month">Contract Month:</label>
+                                <select id="contract-month" name="contract_month">
+                                    <option value="">Auto-detect (Front Month)</option>
+                                    <!-- Month options will be populated by JavaScript -->
+                                </select>
+                                <small class="form-help">Leave blank to automatically use the front month contract</small>
+                            </div>
+
+                            <div class="form-group">
+                                <label for="last-trade-date">Last Trade Date (Optional):</label>
+                                <input type="text" id="last-trade-date" name="last_trade_date" placeholder="YYYYMMDD (e.g., 20250321)" pattern="[0-9]{8}">
+                                <small class="form-help">Format: YYYYMMDD. Leave blank to use contract month.</small>
+                            </div>
                         </div>
 
                         <div class="form-actions">

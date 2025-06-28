@@ -34,6 +34,12 @@ body {
     font-weight: 600;
 }
 
+.connection-statuses {
+    display: flex;
+    gap: 1rem;
+    align-items: center;
+}
+
 .connection-status {
     display: flex;
     align-items: center;
@@ -42,6 +48,7 @@ body {
     background: rgba(255,255,255,0.1);
     border-radius: 20px;
     backdrop-filter: blur(10px);
+    font-size: 0.9rem;
 }
 
 .status-indicator {
@@ -251,6 +258,61 @@ button:disabled {
     padding: 2rem;
 }
 
+/* Futures-Specific Styling */
+.futures-details {
+    margin-top: 1rem;
+    padding: 1rem;
+    background: #f8fafc;
+    border: 1px solid #e2e8f0;
+    border-radius: 8px;
+    transition: opacity 0.3s ease, max-height 0.3s ease;
+}
+
+.futures-details[style*="none"] {
+    opacity: 0;
+    max-height: 0;
+    overflow: hidden;
+    margin: 0;
+    padding: 0;
+}
+
+.form-help {
+    display: block;
+    margin-top: 0.25rem;
+    font-size: 0.75rem;
+    color: #6b7280;
+    font-style: italic;
+}
+
+.futures-details .form-group {
+    margin-bottom: 0.75rem;
+}
+
+.futures-details .form-group:last-child {
+    margin-bottom: 0;
+}
+
+/* Enhanced form styling for better UX */
+.form-group input[pattern]:invalid {
+    border-color: #ef4444;
+}
+
+.form-group input[pattern]:valid {
+    border-color: #10b981;
+}
+
+/* Visual separator for futures section */
+.futures-details::before {
+    content: "Futures Contract Details";
+    display: block;
+    font-weight: 600;
+    color: #374151;
+    margin-bottom: 0.75rem;
+    padding-bottom: 0.5rem;
+    border-bottom: 1px solid #d1d5db;
+    font-size: 0.875rem;
+}
+
 /* Responsive Design */
 @media (max-width: 1200px) {
     .main-content {
@@ -275,5 +337,13 @@ button:disabled {
 
     .form-actions {
         flex-direction: column;
+    }
+
+    .futures-details {
+        padding: 0.75rem;
+    }
+
+    .form-help {
+        font-size: 0.7rem;
     }
 }

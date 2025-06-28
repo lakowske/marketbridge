@@ -26,6 +26,8 @@ class SubscriptionManager {
         const form = document.getElementById('subscription-form');
         const subscribeBtn = document.getElementById('subscribe-btn');
         const unsubscribeBtn = document.getElementById('unsubscribe-btn');
+        const instrumentTypeSelect = document.getElementById('instrument-type');
+        const symbolInput = document.getElementById('symbol');
 
         if (form) {
             form.addEventListener('submit', (e) => {
@@ -39,6 +41,26 @@ class SubscriptionManager {
                 this.handleUnsubscribeSelected();
             });
         }
+
+        // Handle instrument type changes to show/hide futures fields
+        if (instrumentTypeSelect) {
+            instrumentTypeSelect.addEventListener('change', (e) => {
+                this.handleInstrumentTypeChange(e.target.value);
+            });
+        }
+
+        // Handle symbol changes for smart defaults
+        if (symbolInput) {
+            symbolInput.addEventListener('input', (e) => {
+                this.handleSymbolChange(e.target.value);
+            });
+        }
+
+        // Initialize contract month options
+        this.populateContractMonths();
+
+        // Initialize with current selection
+        this.handleInstrumentTypeChange(instrumentTypeSelect?.value || 'stock');
     }
 
     handleSubscribe() {
@@ -61,17 +83,27 @@ class SubscriptionManager {
             return;
         }
 
+        // Get futures-specific parameters if applicable
+        let futuresParams = {};
+        if (instrumentType === 'future') {
+            futuresParams = {
+                exchange: formData.get('exchange') || 'CME',
+                contractMonth: formData.get('contract_month') || '',
+                lastTradeDate: formData.get('last_trade_date') || ''
+            };
+        }
+
         // Subscribe based on data type
         let success = false;
         switch (dataType) {
             case 'market_data':
-                success = window.wsClient.subscribeMarketData(symbol, instrumentType);
+                success = window.wsClient.subscribeMarketData(symbol, instrumentType, futuresParams);
                 break;
             case 'time_and_sales':
-                success = window.wsClient.subscribeTimeAndSales(symbol, instrumentType);
+                success = window.wsClient.subscribeTimeAndSales(symbol, instrumentType, futuresParams);
                 break;
             case 'bid_ask':
-                success = window.wsClient.subscribeBidAsk(symbol, instrumentType);
+                success = window.wsClient.subscribeBidAsk(symbol, instrumentType, futuresParams);
                 break;
         }
 
@@ -82,17 +114,31 @@ class SubscriptionManager {
                 instrumentType,
                 dataType,
                 timestamp: Date.now(),
-                reqId: this.nextReqId++
+                reqId: this.nextReqId++,
+                futuresParams: instrumentType === 'future' ? futuresParams : null
             };
 
             this.subscriptions.set(subscriptionKey, subscription);
             this.reqIdToSymbol.set(subscription.reqId, symbol);
 
             this.renderSubscriptions();
-            logger.success(`Subscribed to ${symbol} ${dataType}`);
 
-            // Clear form
+            // Enhanced success message for futures
+            let successMsg = `Subscribed to ${symbol} ${dataType}`;
+            if (instrumentType === 'future' && futuresParams.exchange) {
+                successMsg += ` (${futuresParams.exchange}`;
+                if (futuresParams.contractMonth) {
+                    successMsg += `, ${futuresParams.contractMonth}`;
+                }
+                successMsg += ')';
+            }
+            logger.success(successMsg);
+
+            // Clear form but preserve instrument type selection
+            const currentInstrumentType = instrumentType;
             form.reset();
+            document.getElementById('instrument-type').value = currentInstrumentType;
+            this.handleInstrumentTypeChange(currentInstrumentType);
         } else {
             logger.error('Failed to subscribe - WebSocket not connected');
         }
@@ -216,15 +262,17 @@ class SubscriptionManager {
         for (const [key, subscription] of currentSubscriptions) {
             // Recreate subscription
             let success = false;
+            const futuresParams = subscription.futuresParams || {};
+
             switch (subscription.dataType) {
                 case 'market_data':
-                    success = window.wsClient.subscribeMarketData(subscription.symbol, subscription.instrumentType);
+                    success = window.wsClient.subscribeMarketData(subscription.symbol, subscription.instrumentType, futuresParams);
                     break;
                 case 'time_and_sales':
-                    success = window.wsClient.subscribeTimeAndSales(subscription.symbol, subscription.instrumentType);
+                    success = window.wsClient.subscribeTimeAndSales(subscription.symbol, subscription.instrumentType, futuresParams);
                     break;
                 case 'bid_ask':
-                    success = window.wsClient.subscribeBidAsk(subscription.symbol, subscription.instrumentType);
+                    success = window.wsClient.subscribeBidAsk(subscription.symbol, subscription.instrumentType, futuresParams);
                     break;
             }
 
@@ -239,6 +287,84 @@ class SubscriptionManager {
         }
 
         this.renderSubscriptions();
+    }
+
+    // Handle instrument type changes to show/hide futures fields
+    handleInstrumentTypeChange(instrumentType) {
+        const futuresDetails = document.getElementById('futures-details');
+        const symbolInput = document.getElementById('symbol');
+
+        if (!futuresDetails) return;
+
+        if (instrumentType === 'future') {
+            futuresDetails.style.display = 'block';
+            // Update symbol placeholder for futures
+            if (symbolInput) {
+                symbolInput.placeholder = 'MNQ, ES, CL, GC';
+            }
+        } else {
+            futuresDetails.style.display = 'none';
+            // Restore original placeholder
+            if (symbolInput) {
+                symbolInput.placeholder = 'AAPL';
+            }
+        }
+    }
+
+    // Handle symbol changes for smart defaults
+    handleSymbolChange(symbol) {
+        const instrumentTypeSelect = document.getElementById('instrument-type');
+        const exchangeSelect = document.getElementById('exchange');
+
+        if (!symbol || !exchangeSelect) return;
+
+        // Auto-detect exchange based on common futures symbols
+        const futuresExchangeMap = {
+            'MNQ': 'CME', 'NQ': 'CME', 'ES': 'CME', 'MES': 'CME',
+            'YM': 'CBOT', 'MYM': 'CBOT', 'ZB': 'CBOT', 'ZN': 'CBOT', 'ZF': 'CBOT',
+            'CL': 'NYMEX', 'NG': 'NYMEX', 'HO': 'NYMEX', 'RB': 'NYMEX',
+            'GC': 'COMEX', 'SI': 'COMEX', 'HG': 'COMEX', 'PA': 'NYMEX', 'PL': 'NYMEX'
+        };
+
+        const upperSymbol = symbol.toUpperCase();
+
+        // If futures instrument type and we recognize the symbol
+        if (instrumentTypeSelect?.value === 'future' && futuresExchangeMap[upperSymbol]) {
+            exchangeSelect.value = futuresExchangeMap[upperSymbol];
+        }
+    }
+
+    // Populate contract month options
+    populateContractMonths() {
+        const contractMonthSelect = document.getElementById('contract-month');
+        if (!contractMonthSelect) return;
+
+        // Clear existing options except the first one (Auto-detect)
+        while (contractMonthSelect.children.length > 1) {
+            contractMonthSelect.removeChild(contractMonthSelect.lastChild);
+        }
+
+        const now = new Date();
+        const monthCodes = ['F', 'G', 'H', 'J', 'K', 'M', 'N', 'Q', 'U', 'V', 'X', 'Z'];
+        const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+
+        // Generate next 18 months of contract options
+        for (let i = 0; i < 18; i++) {
+            const date = new Date(now.getFullYear(), now.getMonth() + i, 1);
+            const year = date.getFullYear().toString().slice(-2);
+            const monthIndex = date.getMonth();
+            const monthCode = monthCodes[monthIndex];
+            const monthName = monthNames[monthIndex];
+
+            const contractCode = `${monthCode}${year}`;
+            const displayName = `${monthName} ${date.getFullYear()} (${contractCode})`;
+
+            const option = document.createElement('option');
+            option.value = contractCode;
+            option.textContent = displayName;
+
+            contractMonthSelect.appendChild(option);
+        }
     }
 }
 

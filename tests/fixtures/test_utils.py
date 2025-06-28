@@ -99,6 +99,10 @@ class MockIBClient:
         self.connected = True
         return True
 
+    def isConnected(self):
+        """Mock isConnected method."""
+        return self.connected
+
     def run(self):
         """Mock run method - does nothing in tests."""
         pass

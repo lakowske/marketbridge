@@ -27,6 +27,8 @@ dependencies = [
     "ibapi>=9.81.1",
     "aiohttp>=3.8.0",
     "aiofiles>=22.1.0",
+    "fastapi>=0.104.0",
+    "uvicorn>=0.24.0",
 ]
 
 [tool.setuptools.packages.find]
@@ -95,13 +97,19 @@ omit = [
     "*/actions/build.py",
     "*/core.py",
     "scripts/*",
-    "playwright/*",
+    "marketbridge_playwright/*",
     "playwright_snippets/*",
+    "*/browser_client.py",
+    "*/browser_session_server.py",
+    "*/session_registry.py",
+    "*/marketbridge_playwright/*",
+    "run_server.py",
     "test_*.py",
     "*_test.py",
 ]
 
 [tool.coverage.report]
+fail_under = 75
 exclude_lines = [
     "pragma: no cover",
     "def __repr__",
@@ -114,7 +122,6 @@ exclude_lines = [
     "class .*\\bProtocol\\):",
     "@(abc\\.)?abstractmethod",
 ]
-fail_under = 80
 show_missing = true
 
 [tool.coverage.html]

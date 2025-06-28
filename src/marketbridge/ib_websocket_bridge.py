@@ -434,6 +434,20 @@ class IBWrapper(EWrapper):
             f"IB Error - ReqId: {reqId}, Code: {errorCode}, Message: {errorString}",
         )
 
+        # Check for connection-related errors
+        connection_lost_codes = [502, 504, 1100, 1102, 2103, 2105]
+        if errorCode in connection_lost_codes:
+            logger.warning(f"IB connection lost - Error code: {errorCode}")
+            self.send_message(
+                {
+                    "type": "connection_status",
+                    "status": "disconnected",
+                    "error_code": errorCode,
+                    "error_string": errorString,
+                    "timestamp": time.time(),
+                }
+            )
+
         self.send_message(
             {
                 "type": "error",
@@ -524,6 +538,29 @@ class IBWebSocketBridge:
         logger.info(f"New WebSocket client connected: {client_addr}")
         self.websocket_clients.add(websocket)
 
+        # Send current IB connection status to new client
+        if self.client.isConnected():
+            await websocket.send(
+                json.dumps(
+                    {
+                        "type": "connection_status",
+                        "status": "connected",
+                        "next_order_id": self.wrapper.next_order_id,
+                        "timestamp": time.time(),
+                    }
+                )
+            )
+        else:
+            await websocket.send(
+                json.dumps(
+                    {
+                        "type": "connection_status",
+                        "status": "disconnected",
+                        "timestamp": time.time(),
+                    }
+                )
+            )
+
         try:
             async for message in websocket:
                 await self.handle_client_message(websocket, message)
@@ -607,11 +644,13 @@ class IBWebSocketBridge:
                 symbol, params.get("exchange", "SMART"), params.get("currency", "USD")
             )
         elif instrument_type == "future":
+            # For futures, prefer expiry (contract month) over last_trade_date
+            expiry_param = params.get("expiry") or params.get("last_trade_date", "")
             return ContractFactory.create_future(
                 symbol,
                 params.get("exchange", "CME"),  # Default to CME
                 params.get("currency", "USD"),
-                params.get("expiry", ""),
+                expiry_param,
             )
         elif instrument_type == "option":
             return ContractFactory.create_option(
@@ -652,13 +691,29 @@ class IBWebSocketBridge:
                     data = data.copy()  # Don't modify original
                     data["instrument_type"] = detected_type
 
-            # For futures without explicit expiry, need to find front month first
-            if instrument_type == "future" and not data.get("expiry"):
-                logger.info(f"Finding front month contract for {symbol}")
-                self._request_front_month_contract(data)
-                return
+            # Handle futures contract specification
+            if instrument_type == "future":
+                # Check for explicit contract details
+                has_expiry = data.get("expiry") or data.get("last_trade_date")
+                exchange = data.get("exchange", "CME")
 
-            # For all other cases, create contract directly
+                if has_expiry:
+                    logger.info(
+                        f"Using explicit contract details for {symbol} - exchange: {exchange}, expiry: {has_expiry}"
+                    )
+                    # Use explicit contract details
+                    contract = self.create_contract_from_params(data)
+                    self._subscribe_to_contract(data, contract)
+                    return
+                else:
+                    # No explicit expiry - try front month detection
+                    logger.info(
+                        f"No explicit expiry provided for {symbol}, finding front month contract"
+                    )
+                    self._request_front_month_contract(data)
+                    return
+
+            # For all other instrument types, create contract directly
             contract = self.create_contract_from_params(data)
             self._subscribe_to_contract(data, contract)
 
@@ -1035,6 +1090,69 @@ class IBWebSocketBridge:
 
         logger.debug("Message broadcaster stopped")
 
+    async def monitor_ib_connection(self):
+        """Monitor IB connection and reconnect if needed"""
+        reconnect_delay = 5  # Start with 5 seconds
+        max_delay = 60  # Max 60 seconds
+
+        while self.is_running:
+            try:
+                # Check if IB is connected
+                if not self.client.isConnected():
+                    logger.info(
+                        f"IB not connected. Attempting reconnection in {reconnect_delay} seconds..."
+                    )
+
+                    # Send disconnected status to all clients
+                    await self.broadcast_message(
+                        {
+                            "type": "connection_status",
+                            "status": "connecting",
+                            "timestamp": time.time(),
+                        }
+                    )
+
+                    await asyncio.sleep(reconnect_delay)
+
+                    if self.connect_to_ib():
+                        logger.info("Successfully reconnected to IB")
+                        reconnect_delay = 5  # Reset delay on successful connection
+                    else:
+                        # Exponential backoff with jitter
+                        reconnect_delay = min(reconnect_delay * 2, max_delay)
+                        logger.warning(
+                            f"Reconnection failed. Next attempt in {reconnect_delay} seconds."
+                        )
+                else:
+                    # Connected - reset delay and check again in 30 seconds
+                    reconnect_delay = 5
+                    await asyncio.sleep(30)
+
+            except asyncio.CancelledError:
+                logger.info("IB connection monitor cancelled")
+                break
+            except Exception as e:
+                logger.error(f"Error in IB connection monitor: {e}")
+                await asyncio.sleep(10)
+
+    async def broadcast_message(self, message):
+        """Broadcast message to all connected WebSocket clients"""
+        if not self.websocket_clients:
+            return
+
+        message_str = json.dumps(message)
+        disconnected_clients = []
+
+        for client in self.websocket_clients.copy():
+            try:
+                await client.send(message_str)
+            except Exception:
+                disconnected_clients.append(client)
+
+        # Remove disconnected clients
+        for client in disconnected_clients:
+            self.websocket_clients.discard(client)
+
     async def start_websocket_server(self):
         """Start the WebSocket server"""
         logger.info(f"Starting WebSocket server on port {self.ws_port}")
@@ -1099,14 +1217,19 @@ class IBWebSocketBridge:
     async def run(self):
         """Main run method"""
         try:
-            # Connect to IB
+            # Try initial IB connection
             if not self.connect_to_ib():
-                logger.error("Failed to connect to IB. Exiting.")
-                return
+                logger.warning(
+                    "Failed initial IB connection. Will retry automatically."
+                )
 
             # Start WebSocket server
             await self.start_websocket_server()
             self.is_running = True
+
+            # Start background IB connection monitor
+            monitor_task = asyncio.create_task(self.monitor_ib_connection())
+            self.tasks.append(monitor_task)
 
             # Keep running until shutdown
             logger.info("Bridge is running. Press Ctrl+C to stop.")

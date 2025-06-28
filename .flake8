@@ -8,7 +8,8 @@ exclude =
     .venv,
     venv,
     htmlcov,
-    web
+    web,
+    examples
 
 max-line-length = 100
 docstring-convention = google
