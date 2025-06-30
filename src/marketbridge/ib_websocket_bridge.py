@@ -24,6 +24,34 @@ logger = logging.getLogger(__name__)
 
 class ContractFactory:
     """Factory for creating different types of contracts"""
+    
+    # Futures contract multipliers
+    FUTURES_MULTIPLIERS = {
+        # E-mini futures
+        "ES": 50,     # E-mini S&P 500
+        "NQ": 20,     # E-mini Nasdaq-100
+        "YM": 5,      # E-mini Dow
+        "RTY": 50,    # E-mini Russell 2000
+        # Micro E-mini futures
+        "MES": 5,     # Micro E-mini S&P 500
+        "MNQ": 2,     # Micro E-mini Nasdaq-100
+        "MYM": 0.5,   # Micro E-mini Dow
+        "M2K": 5,     # Micro E-mini Russell 2000
+    }
+    
+    # Futures contract trading classes
+    FUTURES_TRADING_CLASSES = {
+        # E-mini futures
+        "ES": "ES",     # E-mini S&P 500
+        "NQ": "NQ",     # E-mini Nasdaq-100
+        "YM": "YM",     # E-mini Dow
+        "RTY": "RTY",   # E-mini Russell 2000
+        # Micro E-mini futures
+        "MES": "MES",   # Micro E-mini S&P 500
+        "MNQ": "MNQ",   # Micro E-mini Nasdaq-100
+        "MYM": "MYM",   # Micro E-mini Dow
+        "M2K": "M2K",   # Micro E-mini Russell 2000
+    }
 
     @staticmethod
     def create_stock(symbol, exchange="SMART", currency="USD"):
@@ -46,9 +74,22 @@ class ContractFactory:
         contract.currency = currency
         if last_trade_date:
             contract.lastTradeDateOrContractMonth = last_trade_date
+        
+        # Set multiplier and trading class for known futures contracts
+        if symbol in ContractFactory.FUTURES_MULTIPLIERS:
+            contract.multiplier = ContractFactory.FUTURES_MULTIPLIERS[symbol]
+        
+        if symbol in ContractFactory.FUTURES_TRADING_CLASSES:
+            contract.tradingClass = ContractFactory.FUTURES_TRADING_CLASSES[symbol]
+        
+        # Enhanced logging with multiplier and trading class info
+        multiplier_info = f" multiplier: {ContractFactory.FUTURES_MULTIPLIERS[symbol]}" if symbol in ContractFactory.FUTURES_MULTIPLIERS else ""
+        trading_class_info = f" tradingClass: {ContractFactory.FUTURES_TRADING_CLASSES[symbol]}" if symbol in ContractFactory.FUTURES_TRADING_CLASSES else ""
+        
         logger.debug(
-            f"Created futures contract: {symbol} on {exchange} expiry: {last_trade_date}"
+            f"Created futures contract: {symbol} on {exchange} expiry: {last_trade_date}{multiplier_info}{trading_class_info}"
         )
+        
         return contract
 
     @staticmethod
@@ -59,8 +100,21 @@ class ContractFactory:
         contract.secType = "FUT"
         contract.exchange = exchange
         contract.currency = currency
+        
+        # Set multiplier and trading class for known futures contracts
+        if symbol in ContractFactory.FUTURES_MULTIPLIERS:
+            contract.multiplier = ContractFactory.FUTURES_MULTIPLIERS[symbol]
+        
+        if symbol in ContractFactory.FUTURES_TRADING_CLASSES:
+            contract.tradingClass = ContractFactory.FUTURES_TRADING_CLASSES[symbol]
+        
+        # Enhanced logging with multiplier and trading class info
+        multiplier_info = f" multiplier: {ContractFactory.FUTURES_MULTIPLIERS[symbol]}" if symbol in ContractFactory.FUTURES_MULTIPLIERS else ""
+        trading_class_info = f" tradingClass: {ContractFactory.FUTURES_TRADING_CLASSES[symbol]}" if symbol in ContractFactory.FUTURES_TRADING_CLASSES else ""
+        
+        logger.debug(f"Created generic futures contract: {symbol} on {exchange}{multiplier_info}{trading_class_info}")
+        
         # No expiry specified - used for contract details requests
-        logger.debug(f"Created generic futures contract: {symbol} on {exchange}")
         return contract
 
     @staticmethod
@@ -202,11 +256,21 @@ class IBWrapper(EWrapper):
                 f"Price tick - ReqId: {reqId}, Type: {tick_type_name}({tickType}), Price: {price}"
             )
 
+            # Get symbol from active requests
+            symbol = None
+            instrument_type = None
+            if self.bridge and reqId in self.bridge.active_requests:
+                request_info = self.bridge.active_requests[reqId]
+                symbol = request_info.get("symbol")
+                instrument_type = request_info.get("instrument_type")
+
             self.send_message(
                 {
                     "type": "market_data",
                     "data_type": "price",
                     "req_id": reqId,
+                    "symbol": symbol,
+                    "instrument_type": instrument_type,
                     "tick_type": important_ticks.get(tickType, tick_type_name.lower()),
                     "tick_type_code": tickType,
                     "price": price,
@@ -239,11 +303,21 @@ class IBWrapper(EWrapper):
                 f"Size tick - ReqId: {reqId}, Type: {tick_type_name}({tickType}), Size: {size}"
             )
 
+            # Get symbol from active requests
+            symbol = None
+            instrument_type = None
+            if self.bridge and reqId in self.bridge.active_requests:
+                request_info = self.bridge.active_requests[reqId]
+                symbol = request_info.get("symbol")
+                instrument_type = request_info.get("instrument_type")
+
             self.send_message(
                 {
                     "type": "market_data",
                     "data_type": "size",
                     "req_id": reqId,
+                    "symbol": symbol,
+                    "instrument_type": instrument_type,
                     "tick_type": size_ticks.get(tickType, tick_type_name.lower()),
                     "tick_type_code": tickType,
                     "size": size,
@@ -258,11 +332,21 @@ class IBWrapper(EWrapper):
             f"String tick - ReqId: {reqId}, Type: {tick_type_name}({tickType}), Value: {value}"
         )
 
+        # Get symbol from active requests
+        symbol = None
+        instrument_type = None
+        if self.bridge and reqId in self.bridge.active_requests:
+            request_info = self.bridge.active_requests[reqId]
+            symbol = request_info.get("symbol")
+            instrument_type = request_info.get("instrument_type")
+
         self.send_message(
             {
                 "type": "market_data",
                 "data_type": "string",
                 "req_id": reqId,
+                "symbol": symbol,
+                "instrument_type": instrument_type,
                 "tick_type": tick_type_name.lower(),
                 "tick_type_code": tickType,
                 "value": value,
@@ -273,7 +357,7 @@ class IBWrapper(EWrapper):
     def tickByTickAllLast(
         self,
         reqId,
-        tickType,
+        _tickType,
         time,
         price,
         size,
@@ -286,10 +370,20 @@ class IBWrapper(EWrapper):
             f"Time & Sales - ReqId: {reqId}, Time: {time}, Price: {price}, Size: {size}, Exchange: {exchange}"
         )
 
+        # Get symbol from active requests
+        symbol = None
+        instrument_type = None
+        if self.bridge and reqId in self.bridge.active_requests:
+            request_info = self.bridge.active_requests[reqId]
+            symbol = request_info.get("symbol")
+            instrument_type = request_info.get("instrument_type")
+
         self.send_message(
             {
                 "type": "time_and_sales",
                 "req_id": reqId,
+                "symbol": symbol,
+                "instrument_type": instrument_type,
                 "tick_type": "last",
                 "trade_time": time,
                 "price": price,
@@ -310,10 +404,20 @@ class IBWrapper(EWrapper):
             f"Bid/Ask Tick - ReqId: {reqId}, Time: {time}, Bid: {bidPrice}x{bidSize}, Ask: {askPrice}x{askSize}"
         )
 
+        # Get symbol from active requests
+        symbol = None
+        instrument_type = None
+        if self.bridge and reqId in self.bridge.active_requests:
+            request_info = self.bridge.active_requests[reqId]
+            symbol = request_info.get("symbol")
+            instrument_type = request_info.get("instrument_type")
+
         self.send_message(
             {
                 "type": "bid_ask_tick",
                 "req_id": reqId,
+                "symbol": symbol,
+                "instrument_type": instrument_type,
                 "trade_time": time,
                 "bid_price": bidPrice,
                 "ask_price": askPrice,
@@ -331,10 +435,20 @@ class IBWrapper(EWrapper):
             f"Midpoint Tick - ReqId: {reqId}, Time: {time}, Midpoint: {midPoint}"
         )
 
+        # Get symbol from active requests
+        symbol = None
+        instrument_type = None
+        if self.bridge and reqId in self.bridge.active_requests:
+            request_info = self.bridge.active_requests[reqId]
+            symbol = request_info.get("symbol")
+            instrument_type = request_info.get("instrument_type")
+
         self.send_message(
             {
                 "type": "midpoint_tick",
                 "req_id": reqId,
+                "symbol": symbol,
+                "instrument_type": instrument_type,
                 "trade_time": time,
                 "midpoint": midPoint,
                 "timestamp": time,
@@ -348,12 +462,12 @@ class IBWrapper(EWrapper):
         filled,
         remaining,
         avgFillPrice,
-        permId,
-        parentId,
+        _permId,
+        _parentId,
         lastFillPrice,
-        clientId,
+        _clientId,
         whyHeld,
-        mktCapPrice,
+        _mktCapPrice,
     ):
         """Receives order status updates"""
         logger.info(

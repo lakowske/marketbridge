@@ -105,6 +105,16 @@ class MarketBridgeApp {
     handleConnectionStatus(message) {
         if (message.status === 'connected') {
             logger.success(`IB connection established. Next order ID: ${message.next_order_id}`);
+            // Update IB status indicator
+            window.wsClient.updateConnectionStatus('connected', true);
+        } else if (message.status === 'disconnected') {
+            logger.info(`IB connection status: ${message.status}`);
+            // Update IB status indicator
+            window.wsClient.updateConnectionStatus('disconnected', true);
+        } else if (message.status === 'connecting') {
+            logger.info(`IB connection status: ${message.status}`);
+            // Update IB status indicator
+            window.wsClient.updateConnectionStatus('connecting', true);
         } else {
             logger.info(`IB connection status: ${message.status}`);
         }

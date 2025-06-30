@@ -112,6 +112,7 @@ class MarketDataDisplay {
             return window.subscriptionManager.getSymbolByReqId(message.req_id);
         }
 
+        logger.warning('Could not determine symbol from message', message);
         return null;
     }
 
