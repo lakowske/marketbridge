@@ -173,3 +173,6 @@ cython_debug/
 # Playwright temporary snippets
 playwright_snippets/
 !playwright_snippets/.gitkeep
+
+# Browser automation screenshots
+screenshots/
