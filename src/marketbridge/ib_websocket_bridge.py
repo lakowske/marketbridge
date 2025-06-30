@@ -24,33 +24,33 @@ logger = logging.getLogger(__name__)
 
 class ContractFactory:
     """Factory for creating different types of contracts"""
-    
+
     # Futures contract multipliers
     FUTURES_MULTIPLIERS = {
         # E-mini futures
-        "ES": 50,     # E-mini S&P 500
-        "NQ": 20,     # E-mini Nasdaq-100
-        "YM": 5,      # E-mini Dow
-        "RTY": 50,    # E-mini Russell 2000
+        "ES": 50,  # E-mini S&P 500
+        "NQ": 20,  # E-mini Nasdaq-100
+        "YM": 5,  # E-mini Dow
+        "RTY": 50,  # E-mini Russell 2000
         # Micro E-mini futures
-        "MES": 5,     # Micro E-mini S&P 500
-        "MNQ": 2,     # Micro E-mini Nasdaq-100
-        "MYM": 0.5,   # Micro E-mini Dow
-        "M2K": 5,     # Micro E-mini Russell 2000
+        "MES": 5,  # Micro E-mini S&P 500
+        "MNQ": 2,  # Micro E-mini Nasdaq-100
+        "MYM": 0.5,  # Micro E-mini Dow
+        "M2K": 5,  # Micro E-mini Russell 2000
     }
-    
+
     # Futures contract trading classes
     FUTURES_TRADING_CLASSES = {
         # E-mini futures
-        "ES": "ES",     # E-mini S&P 500
-        "NQ": "NQ",     # E-mini Nasdaq-100
-        "YM": "YM",     # E-mini Dow
-        "RTY": "RTY",   # E-mini Russell 2000
+        "ES": "ES",  # E-mini S&P 500
+        "NQ": "NQ",  # E-mini Nasdaq-100
+        "YM": "YM",  # E-mini Dow
+        "RTY": "RTY",  # E-mini Russell 2000
         # Micro E-mini futures
-        "MES": "MES",   # Micro E-mini S&P 500
-        "MNQ": "MNQ",   # Micro E-mini Nasdaq-100
-        "MYM": "MYM",   # Micro E-mini Dow
-        "M2K": "M2K",   # Micro E-mini Russell 2000
+        "MES": "MES",  # Micro E-mini S&P 500
+        "MNQ": "MNQ",  # Micro E-mini Nasdaq-100
+        "MYM": "MYM",  # Micro E-mini Dow
+        "M2K": "M2K",  # Micro E-mini Russell 2000
     }
 
     @staticmethod
@@ -74,22 +74,30 @@ class ContractFactory:
         contract.currency = currency
         if last_trade_date:
             contract.lastTradeDateOrContractMonth = last_trade_date
-        
+
         # Set multiplier and trading class for known futures contracts
         if symbol in ContractFactory.FUTURES_MULTIPLIERS:
             contract.multiplier = ContractFactory.FUTURES_MULTIPLIERS[symbol]
-        
+
         if symbol in ContractFactory.FUTURES_TRADING_CLASSES:
             contract.tradingClass = ContractFactory.FUTURES_TRADING_CLASSES[symbol]
-        
+
         # Enhanced logging with multiplier and trading class info
-        multiplier_info = f" multiplier: {ContractFactory.FUTURES_MULTIPLIERS[symbol]}" if symbol in ContractFactory.FUTURES_MULTIPLIERS else ""
-        trading_class_info = f" tradingClass: {ContractFactory.FUTURES_TRADING_CLASSES[symbol]}" if symbol in ContractFactory.FUTURES_TRADING_CLASSES else ""
-        
+        multiplier_info = (
+            f" multiplier: {ContractFactory.FUTURES_MULTIPLIERS[symbol]}"
+            if symbol in ContractFactory.FUTURES_MULTIPLIERS
+            else ""
+        )
+        trading_class_info = (
+            f" tradingClass: {ContractFactory.FUTURES_TRADING_CLASSES[symbol]}"
+            if symbol in ContractFactory.FUTURES_TRADING_CLASSES
+            else ""
+        )
+
         logger.debug(
             f"Created futures contract: {symbol} on {exchange} expiry: {last_trade_date}{multiplier_info}{trading_class_info}"
         )
-        
+
         return contract
 
     @staticmethod
@@ -100,20 +108,30 @@ class ContractFactory:
         contract.secType = "FUT"
         contract.exchange = exchange
         contract.currency = currency
-        
+
         # Set multiplier and trading class for known futures contracts
         if symbol in ContractFactory.FUTURES_MULTIPLIERS:
             contract.multiplier = ContractFactory.FUTURES_MULTIPLIERS[symbol]
-        
+
         if symbol in ContractFactory.FUTURES_TRADING_CLASSES:
             contract.tradingClass = ContractFactory.FUTURES_TRADING_CLASSES[symbol]
-        
+
         # Enhanced logging with multiplier and trading class info
-        multiplier_info = f" multiplier: {ContractFactory.FUTURES_MULTIPLIERS[symbol]}" if symbol in ContractFactory.FUTURES_MULTIPLIERS else ""
-        trading_class_info = f" tradingClass: {ContractFactory.FUTURES_TRADING_CLASSES[symbol]}" if symbol in ContractFactory.FUTURES_TRADING_CLASSES else ""
-        
-        logger.debug(f"Created generic futures contract: {symbol} on {exchange}{multiplier_info}{trading_class_info}")
-        
+        multiplier_info = (
+            f" multiplier: {ContractFactory.FUTURES_MULTIPLIERS[symbol]}"
+            if symbol in ContractFactory.FUTURES_MULTIPLIERS
+            else ""
+        )
+        trading_class_info = (
+            f" tradingClass: {ContractFactory.FUTURES_TRADING_CLASSES[symbol]}"
+            if symbol in ContractFactory.FUTURES_TRADING_CLASSES
+            else ""
+        )
+
+        logger.debug(
+            f"Created generic futures contract: {symbol} on {exchange}{multiplier_info}{trading_class_info}"
+        )
+
         # No expiry specified - used for contract details requests
         return contract
 

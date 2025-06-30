@@ -72,27 +72,25 @@ Use the professional CLI server management tool for running MarketBridge:
 - `python scripts/manage_server.py logs --error` - Show error logs
 - `python scripts/manage_server.py --help` - Show all available options
 
-### Browser Session Server
+### Browser-Bunny Server
 
-Use the browser session daemon for persistent browser automation:
+Use browser-bunny for persistent browser automation:
 
-- `python scripts/browser_session_daemon.py start` - Start browser session server
-- `python scripts/browser_session_daemon.py stop` - Stop browser session server
-- `python scripts/browser_session_daemon.py restart` - Restart browser session server
-- `python scripts/browser_session_daemon.py status` - Show daemon status
-- `python scripts/browser_session_daemon.py status -v` - Show detailed status with memory usage
-- `python scripts/browser_session_daemon.py logs` - Show recent logs
-- `python scripts/browser_session_daemon.py logs --follow` - Follow logs in real-time
-- `python scripts/browser_session_daemon.py cleanup` - Clean up old sessions and logs
+- `browser-bunny start` - Start browser automation server
+- `browser-bunny stop` - Stop browser automation server
+- `browser-bunny restart` - Restart browser automation server
+- `browser-bunny status` - Show server status
+- `browser-bunny logs -n 50` - Show recent logs
+- Alternative: `python3 -m browser_bunny.daemon start` - Start using module directly
 
 ### Server Management Features
 
 - **Background process management** with PID file tracking
 - **Graceful shutdown** handling (SIGTERM → SIGKILL if needed)
-- **Automatic log redirection** to `logs/marketbridge.log` and `logs/marketbridge_error.log`
+- **Comprehensive logging** to `logs/marketbridge.log`, `logs/marketbridge_error.log`, and browser-bunny logs
 - **Colorized CLI output** for better user experience
 - **Process monitoring** with memory usage and status information
-- **Browser session persistence** with automatic cleanup and health monitoring
+- **Browser session persistence** via browser-bunny with automatic cleanup
 
 ## Logging Standards
 
@@ -144,57 +142,311 @@ Every commit must pass:
 
 This template ensures that code quality, testing, and documentation standards are maintained throughout the development lifecycle.
 
-## Browser Session Automation
+## Browser Automation with Browser-Bunny
 
-MarketBridge includes a powerful browser automation system inspired by browser-bunny architecture:
+MarketBridge uses **browser-bunny** for browser automation, providing persistent browser sessions and trading workflow automation. Browser-bunny is a FastAPI-based server that manages browser sessions using Playwright, enabling iterative development and session persistence.
 
-### Features
+### Architecture Overview
 
-- **Persistent Browser Sessions** - Sessions survive script restarts and maintain state
-- **Server-Based Control** - RESTful API for browser automation via FastAPI
+- **Browser-Bunny Server** - FastAPI server managing browser sessions via Playwright
+- **Persistent Sessions** - Sessions survive script restarts and maintain state
 - **Session Registry** - Centralized tracking with automatic cleanup
-- **MarketBridge Integration** - Specialized methods for trading workflows
-- **Developer Tools** - Live screenshots, debugging, and session management
+- **MarketBridge Integration** - Thin wrapper for trading-specific workflows
+- **Clean Dependencies** - MarketBridge imports browser-bunny as a file dependency
 
 ### Quick Start
 
 ```bash
-# Start the browser session server
-python scripts/browser_session_daemon.py start
-
-# Run examples
-python examples/browser_session_example.py
+# Start the browser-bunny server (required for all automation)
+browser-bunny start
 
 # Check server status
-python scripts/browser_session_daemon.py status -v
+browser-bunny status
+
+# Run MarketBridge automation examples
+python examples/persistent_browser.py
+python examples/marketbridge_parser.py
+python examples/cleanup_sessions.py
 ```
 
-### Python API Usage
+### Core Development Patterns
+
+#### 1. Persistent Session Pattern (Recommended)
+
+Use the persistent session manager for sessions that survive script restarts:
+
+```python
+from browser_bunny.persistent_session_manager import get_persistent_session
+
+async def parse_marketbridge_data():
+    # Get or create persistent session - survives script restarts
+    manager = await get_persistent_session("marketbridge_parser")
+
+    try:
+        # Navigate to MarketBridge
+        await manager.navigate_to("http://localhost:8080")
+
+        # Take screenshot for debugging
+        await manager.screenshot("marketbridge_start.png")
+
+        # Parse market data using JavaScript
+        market_data = await manager.execute_js("""
+            return Array.from(document.querySelectorAll('#market-data-table tbody tr')).map(row => ({
+                symbol: row.cells[0]?.textContent.trim(),
+                bid: row.cells[1]?.textContent.trim(),
+                ask: row.cells[2]?.textContent.trim()
+            }));
+        """)
+
+        return market_data
+
+    finally:
+        # Don't cleanup - leave persistent session open for reuse
+        await manager.cleanup()
+```
+
+#### 2. MarketBridge Wrapper Pattern
+
+Use the MarketBridge-specific wrapper for convenience methods:
 
 ```python
 from marketbridge.browser_client import BrowserController
 
 async def automate_trading():
     async with BrowserController() as controller:
-        # Start persistent session
-        session = await controller.start_session("trading")
+        # Start persistent session with auto-navigation to MarketBridge
+        session = await controller.start_session("trading", auto_navigate=True)
 
-        # Wait for MarketBridge to load
+        # Wait for MarketBridge UI to be ready
         await controller.wait_for_marketbridge_ready()
 
-        # Subscribe to market data
+        # MarketBridge-specific automation
         await controller.subscribe_to_market_data("AAPL")
-
-        # Take debug screenshot
-        await controller.take_debug_screenshot("subscription")
+        await controller.take_debug_screenshot("subscribed")
 ```
 
-### Documentation
+#### 3. Session Management Pattern
 
-For comprehensive documentation on browser session automation, see:
+```python
+# List all active sessions
+from browser_bunny.client import BrowserClient
 
-- **[docs/BROWSER_SESSIONS.md](docs/BROWSER_SESSIONS.md)** - Complete architecture guide
-- **[docs/README.md](docs/README.md)** - Documentation index
-- **[examples/browser_session_example.py](examples/browser_session_example.py)** - Working examples
+async def list_sessions():
+    async with BrowserClient("http://localhost:9247") as client:
+        response = await client.get("/sessions")
+        sessions = response.get("sessions", [])
 
-The browser session system provides both interactive development capabilities (via existing Playwright tools) and production automation features (via the session server API).
+        for session in sessions:
+            print(f"Session: {session['session_name']} ({session['session_id']})")
+            print(f"  Created: {session.get('created_at', 'Unknown')}")
+            print(f"  Pages: {len(session.get('pages', []))}")
+
+# Cleanup old sessions
+async def cleanup_old_sessions():
+    async with BrowserClient("http://localhost:9247") as client:
+        response = await client.get("/sessions")
+        sessions = response.get("sessions", [])
+
+        for session in sessions:
+            # Clean up sessions older than 24 hours
+            if is_session_old(session, hours=24):
+                await client.delete(f"/sessions/{session['session_id']}")
+                print(f"Cleaned up old session: {session['session_name']}")
+```
+
+### Development Workflow
+
+#### 1. Iterative Parser Development
+
+```python
+# Step 1: Inspect DOM structure
+async def inspect_marketbridge_dom():
+    manager = await get_persistent_session("dom_inspector")
+    await manager.navigate_to("http://localhost:8080")
+
+    # Debug DOM structure
+    structure = await manager.execute_js("""
+        return {
+            market_table: !!document.querySelector('#market-data-table'),
+            status_element: !!document.querySelector('#status-text'),
+            available_ids: Array.from(document.querySelectorAll('[id]')).map(el => el.id),
+            table_headers: Array.from(document.querySelectorAll('#market-data-table th')).map(th => th.textContent.trim())
+        };
+    """)
+    print(json.dumps(structure, indent=2))
+
+# Step 2: Build parser incrementally
+async def build_parser():
+    manager = await get_persistent_session("parser_dev")
+
+    # Test each component separately
+    connection_status = await manager.execute_js(
+        "return document.querySelector('#status-text')?.textContent.trim()"
+    )
+
+    market_data = await manager.execute_js("""
+        return Array.from(document.querySelectorAll('#market-data-table tbody tr')).map((row, index) => ({
+            rank: index + 1,
+            symbol: row.cells[0]?.textContent.trim() || '',
+            bid: row.cells[1]?.textContent.trim() || '',
+            ask: row.cells[2]?.textContent.trim() || ''
+        }));
+    """)
+
+    return {"status": connection_status, "data": market_data}
+```
+
+#### 2. Screenshot-Driven Development
+
+```python
+async def debug_with_screenshots():
+    manager = await get_persistent_session("debug_session")
+
+    # Take screenshot at each step
+    await manager.navigate_to("http://localhost:8080")
+    await manager.screenshot("01_initial_load.png")
+
+    # Wait for data to load
+    await asyncio.sleep(2)
+    await manager.screenshot("02_data_loaded.png")
+
+    # Execute parsing
+    result = await manager.execute_js("/* parsing code */")
+    await manager.screenshot("03_after_parsing.png")
+
+    print(f"Screenshots saved to: screenshots/")
+```
+
+### Session Lifecycle Management
+
+#### Session Naming Conventions
+
+```python
+# Use descriptive session names for different purposes
+manager = await get_persistent_session("marketbridge_parser")      # For UI parsing
+manager = await get_persistent_session("trading_automation")       # For trading workflows
+manager = await get_persistent_session("dom_inspector")           # For development/debugging
+manager = await get_persistent_session("performance_test")        # For testing
+```
+
+#### Session Cleanup Strategies
+
+```python
+# Manual cleanup when completely done
+from browser_bunny.persistent_session_manager import cleanup_persistent_session
+
+# Clean up specific session
+await cleanup_persistent_session("marketbridge_parser")
+
+# Or use the cleanup script
+# python examples/cleanup_sessions.py --old-only 24  # Clean sessions older than 24 hours
+```
+
+### Error Handling and Debugging
+
+```python
+async def robust_parsing():
+    manager = await get_persistent_session("robust_parser")
+
+    try:
+        await manager.navigate_to("http://localhost:8080", wait_until="domcontentloaded")
+
+        # Verify page loaded correctly
+        page_title = await manager.execute_js("return document.title")
+        if "MarketBridge" not in page_title:
+            await manager.screenshot("error_wrong_page.png")
+            raise Exception(f"Wrong page loaded: {page_title}")
+
+        # Parse with error handling
+        market_data = await manager.execute_js("""
+            try {
+                const rows = document.querySelectorAll('#market-data-table tbody tr');
+                if (rows.length === 0) {
+                    return {error: "No market data rows found"};
+                }
+
+                return Array.from(rows).map(row => ({
+                    symbol: row.cells[0]?.textContent.trim() || 'UNKNOWN',
+                    bid: row.cells[1]?.textContent.trim() || '0',
+                    ask: row.cells[2]?.textContent.trim() || '0'
+                }));
+            } catch (e) {
+                return {error: e.message};
+            }
+        """)
+
+        if market_data.get('error'):
+            await manager.screenshot("error_parsing_failed.png")
+            raise Exception(f"Parsing failed: {market_data['error']}")
+
+        return market_data
+
+    except Exception as e:
+        # Always take error screenshot for debugging
+        await manager.screenshot("error_exception.png")
+        logger.error(f"Parsing failed: {e}", exc_info=True)
+        raise
+    finally:
+        # Leave session open for investigation/reuse
+        await manager.cleanup()
+```
+
+### Integration with MarketBridge Workflows
+
+#### Market Data Subscription Automation
+
+```python
+async def automate_subscription(symbol: str, instrument_type: str):
+    manager = await get_persistent_session("subscription_automation")
+
+    await manager.navigate_to("http://localhost:8080")
+
+    # Fill subscription form
+    await manager.execute_js(f"""
+        document.querySelector('#symbol-input').value = '{symbol}';
+        document.querySelector('#instrument-select').value = '{instrument_type}';
+        document.querySelector('#subscribe-button').click();
+    """)
+
+    # Wait for subscription to appear
+    await asyncio.sleep(1)
+
+    # Verify subscription was added
+    subscriptions = await manager.execute_js("""
+        return Array.from(document.querySelectorAll('#subscriptions-list .subscription-item')).map(item => ({
+            symbol: item.querySelector('.symbol')?.textContent.trim(),
+            type: item.querySelector('.type')?.textContent.trim()
+        }));
+    """)
+
+    # Take confirmation screenshot
+    await manager.screenshot(f"subscription_{symbol}_{instrument_type}.png")
+
+    return subscriptions
+```
+
+### Best Practices
+
+1. **Use Persistent Sessions** - Always use `get_persistent_session()` for development
+1. **Screenshot Everything** - Take screenshots at each step for visual debugging
+1. **Incremental Development** - Build parsers step by step, test each component
+1. **Error Screenshots** - Always take screenshots on errors for debugging
+1. **Descriptive Session Names** - Use clear, descriptive session names
+1. **Clean JavaScript** - Use proper JavaScript with error handling
+1. **Wait Appropriately** - Use `domcontentloaded` for most cases, add manual waits when needed
+1. **Verify Results** - Always verify parsed data matches what's visible on page
+
+### Available Examples
+
+- **`examples/persistent_browser.py`** - Create a persistent browser session
+- **`examples/marketbridge_parser.py`** - Parse MarketBridge UI data
+- **`examples/cleanup_sessions.py`** - Session management and cleanup
+- **`examples/browser_session_example.py`** - Comprehensive automation example
+
+### Documentation References
+
+- **[docs/BROWSER_BUNNY_INTEGRATION.md](docs/BROWSER_BUNNY_INTEGRATION.md)** - Complete integration guide
+- **[examples/README.md](examples/README.md)** - Example usage and patterns
+- **[Browser-Bunny Documentation](../browser-bunny/docs/)** - Core automation library docs
+
+MarketBridge leverages browser-bunny's persistent session architecture for robust, iterative browser automation that survives script restarts and enables faster development cycles.

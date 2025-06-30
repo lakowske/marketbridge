@@ -176,3 +176,6 @@ playwright_snippets/
 
 # Browser automation screenshots
 screenshots/
+
+# Runtime files
+run/
