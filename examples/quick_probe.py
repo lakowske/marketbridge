@@ -40,15 +40,15 @@ async def quick_probe(action="status"):
         elif action.startswith("fill:"):
             symbol = action.split(":")[1]
             script = f"""
-            (() => {{
-                const input = document.querySelector('input[type="text"]');
-                if (input) {{
-                    input.value = '{symbol}';
-                    input.dispatchEvent(new Event('input', {{bubbles: true}}));
-                    return {{success: true, value: input.value}};
-                }}
-                return {{success: false}};
-            }})()
+(() => {{
+    const input = document.querySelector('input[type="text"]');
+    if (input) {{
+        input.value = '{symbol}';
+        input.dispatchEvent(new Event('input', {{bubbles: true}}));
+        return {{success: true, value: input.value}};
+    }}
+    return {{success: false}};
+}})()
             """
 
         result = await client._post(

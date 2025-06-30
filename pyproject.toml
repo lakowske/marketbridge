@@ -29,6 +29,7 @@ dependencies = [
     "aiofiles>=22.1.0",
     "fastapi>=0.104.0",
     "uvicorn>=0.24.0",
+    "browser-bunny @ file:///home/seth/Software/dev/browser-bunny",
 ]
 
 [tool.setuptools.packages.find]
@@ -54,7 +55,7 @@ dev = [
     "mypy>=1.0.0",
     "isort>=5.0.0",
     "bandit>=1.7.0",
-    "playwright>=1.40.0",       # Browser automation
+    # Note: browser automation now provided by browser-bunny dependency
 ]
 
 [project.urls]
@@ -97,12 +98,8 @@ omit = [
     "*/actions/build.py",
     "*/core.py",
     "scripts/*",
-    "marketbridge_playwright/*",
-    "playwright_snippets/*",
-    "*/browser_client.py",
-    "*/browser_session_server.py",
-    "*/session_registry.py",
-    "*/marketbridge_playwright/*",
+    # Note: browser automation code moved to browser-bunny dependency
+    "*/browser_client.py",  # Browser automation integration layer - testing requires browser setup
     "run_server.py",
     "test_*.py",
     "*_test.py",
@@ -174,6 +171,6 @@ markers = [
 ]
 
 [tool.bandit]
-exclude_dirs = ["tests", ".venv", "build", "dist", "scripts", "playwright", "playwright_snippets"]
+exclude_dirs = ["tests", ".venv", "build", "dist", "scripts"]
 skips = ["B101"]
 targets = ["src"]

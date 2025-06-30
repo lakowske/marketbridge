@@ -18,8 +18,8 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
 try:
-    from playwright.browser_manager import BrowserManager
-    from playwright.session_manager import SessionManager
+    from marketbridge_playwright.browser_manager import BrowserManager
+    from marketbridge_playwright.session_manager import SessionManager
 except ImportError as e:
     print(f"Error importing Playwright modules: {e}")
     print("Make sure you're running from the project root and Playwright is installed.")

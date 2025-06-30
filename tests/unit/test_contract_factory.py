@@ -117,7 +117,7 @@ class TestContractFactory:
 
         ContractFactory.create_future("ES", "CME")
         mock_logger.debug.assert_called_with(
-            "Created futures contract: ES on CME expiry: "
+            "Created futures contract: ES on CME expiry:  multiplier: 50 tradingClass: ES"
         )
 
         ContractFactory.create_option("AAPL", 150.0, "C", "20240315")

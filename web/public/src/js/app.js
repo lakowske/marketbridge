@@ -108,7 +108,7 @@ class MarketBridgeApp {
             // Update IB status indicator
             window.wsClient.updateConnectionStatus('connected', true);
         } else if (message.status === 'disconnected') {
-            logger.info(`IB connection status: ${message.status}`);
+            logger.warning('IB connection lost');
             // Update IB status indicator
             window.wsClient.updateConnectionStatus('disconnected', true);
         } else if (message.status === 'connecting') {

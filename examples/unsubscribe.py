@@ -12,163 +12,194 @@ project_root = script_dir.parent
 src_dir = project_root / "src"
 sys.path.insert(0, str(src_dir))
 
-from marketbridge.browser_client import BrowserClient
+import os
+import sys
+
+# Add browser-bunny to Python path
+sys.path.insert(0, "/home/seth/Software/dev/browser-bunny")
+from browser_bunny import SessionManager
 
 
 async def unsubscribe_from_symbol(symbol: str):
-    """Unsubscribe from market data for a given symbol."""
-    async with BrowserClient() as client:
-        sessions = await client.list_sessions()
-        if not sessions:
-            print("❌ No active sessions")
-            return False
+    """Unsubscribe from market data for a given symbol using browser-bunny."""
+    # Use existing browser session or create new one with timestamp
+    import time
 
-        session_id = sessions[0]["session_id"]
+    session_name = f"marketbridge_unsubscribe_{int(time.time())}"
+    manager = SessionManager(session_name)
 
+    try:
         print(f"📉 Unsubscribing from {symbol}...")
 
-        # Look for and click Unsubscribe button for the specified symbol
-        script = f"""
-        (() => {{
-            // Find all unsubscribe buttons
-            const unsubscribeButtons = Array.from(document.querySelectorAll('button')).filter(btn =>
-                btn.textContent.toLowerCase().includes('unsubscribe')
-            );
+        # Navigate to MarketBridge
+        await manager.navigate_to("http://localhost:8080")
+        print(f"✅ Connected to MarketBridge UI")
 
-            // Try to find the specific unsubscribe button for this symbol
-            for (const btn of unsubscribeButtons) {{
-                // Check if this button is associated with the symbol by looking at nearby text
-                const parent = btn.closest('div, li, tr, td');
-                if (parent && parent.textContent.includes('{symbol}')) {{
-                    btn.click();
-                    return {{success: true, message: 'Clicked Unsubscribe for {symbol}', method: 'symbol-specific'}};
-                }}
-            }}
+        # Take a screenshot before unsubscription
+        await manager.screenshot(f"before_unsubscribe_{symbol}.png")
 
-            // Alternative: look in table rows for the symbol and find unsubscribe button
-            const tableRows = Array.from(document.querySelectorAll('tr'));
-            for (const row of tableRows) {{
-                if (row.textContent.includes('{symbol}')) {{
-                    const unsubBtn = row.querySelector('button:contains("Unsubscribe"), button[onclick*="unsubscribe"]') ||
-                                   Array.from(row.querySelectorAll('button')).find(btn =>
-                                       btn.textContent.toLowerCase().includes('unsubscribe')
-                                   );
-                    if (unsubBtn) {{
-                        unsubBtn.click();
-                        return {{success: true, message: 'Clicked Unsubscribe for {symbol} in table', method: 'table-row'}};
+        # Try using the unsubscribe button in the subscription form
+        print("📝 Filling unsubscribe form...")
+        unsubscribe_result = await manager.execute_js(
+            f"""
+            (() => {{
+                try {{
+                    // Fill symbol field
+                    const symbolInput = document.querySelector('#symbol');
+                    if (symbolInput) {{
+                        symbolInput.value = '{symbol}';
+                        symbolInput.dispatchEvent(new Event('input', {{ bubbles: true }}));
+                        symbolInput.dispatchEvent(new Event('change', {{ bubbles: true }}));
                     }}
+
+                    // Click unsubscribe button
+                    const unsubscribeBtn = document.querySelector('#unsubscribe-btn');
+                    if (unsubscribeBtn) {{
+                        unsubscribeBtn.click();
+                        return {{
+                            success: true,
+                            message: 'Clicked unsubscribe button for {symbol}'
+                        }};
+                    }} else {{
+                        return {{
+                            success: false,
+                            message: 'Unsubscribe button not found'
+                        }};
+                    }}
+                }} catch (error) {{
+                    return {{
+                        success: false,
+                        error: error.message
+                    }};
                 }}
-            }}
-
-            // List available subscriptions and unsubscribe buttons for debugging
-            const subscriptions = [];
-            const subscriptionsList = document.querySelector('.subscriptions, .active-subscriptions');
-            if (subscriptionsList) {{
-                const items = Array.from(subscriptionsList.querySelectorAll('li, div')).filter(el =>
-                    el.textContent.trim() && (el.textContent.includes('•') || el.textContent.includes('Unsubscribe'))
-                );
-                subscriptions.push(...items.map(el => el.textContent.trim()));
-            }}
-
-            return {{
-                success: false,
-                message: 'No Unsubscribe button found for {symbol}',
-                availableSubscriptions: subscriptions,
-                unsubscribeButtonCount: unsubscribeButtons.length
-            }};
-        }})()
+            }})()
         """
-
-        result = await client._post(
-            f"/sessions/{session_id}/execute", {"script": script, "args": []}
         )
-        response = result.get("result", {})
 
-        if response.get("success"):
-            print(
-                f"✅ {response.get('message')} (method: {response.get('method', 'unknown')})"
-            )
-        else:
-            print(f"❌ {response.get('message')}")
-            if response.get("availableSubscriptions"):
-                print("\n📋 Available subscriptions:")
-                for sub in response.get("availableSubscriptions", [])[:10]:
-                    if sub:
-                        print(f"  • {sub}")
-            print(
-                f"\n🔘 Found {response.get('unsubscribeButtonCount', 0)} unsubscribe buttons"
-            )
+        print(f"🔍 Unsubscribe result: {unsubscribe_result}")
+
+        if not unsubscribe_result or not unsubscribe_result.get("success"):
+            print(f"❌ Failed to unsubscribe: {unsubscribe_result}")
             return False
 
-        # Wait and verify unsubscription
-        await asyncio.sleep(2)
+        # Wait for unsubscription to process
+        print("⏳ Waiting for unsubscription to process...")
+        await asyncio.sleep(3)
 
-        # Check if unsubscription was successful
-        check_script = f"""
-        (() => {{
-            const subscriptionsList = document.querySelector('.subscriptions, .active-subscriptions');
-            const marketDataTable = document.querySelector('table');
+        # Take screenshot after unsubscription
+        await manager.screenshot(f"after_unsubscribe_{symbol}.png")
 
-            let stillInSubscriptions = false;
-            let stillInTable = false;
-            let subscriptionCount = 0;
+        # Verify unsubscription was successful
+        print("🔍 Checking unsubscription status...")
+        verification_result = await manager.execute_js(
+            f"""
+            (() => {{
+                try {{
+                    const subscriptionsList = document.querySelector('#subscriptions-list');
+                    const marketDataGrid = document.querySelector('#market-data-grid');
 
-            if (subscriptionsList) {{
-                const text = subscriptionsList.textContent;
-                stillInSubscriptions = text.includes('{symbol}');
-                // Count remaining subscription items
-                const items = Array.from(subscriptionsList.querySelectorAll('li, div')).filter(el =>
-                    el.textContent.trim() && el.textContent.includes('•')
-                );
-                subscriptionCount = items.length;
-            }}
+                    let foundInSubscriptions = false;
+                    let foundInTable = false;
+                    let subscriptionCount = 0;
+                    let subscriptionsText = "";
 
-            if (marketDataTable) {{
-                const rows = Array.from(marketDataTable.querySelectorAll('tr'));
-                stillInTable = rows.some(row => row.textContent.includes('{symbol}'));
-            }}
+                    if (subscriptionsList) {{
+                        subscriptionsText = subscriptionsList.textContent || subscriptionsList.innerHTML || "";
+                        foundInSubscriptions = subscriptionsText.includes('{symbol}');
+                        const items = subscriptionsList.querySelectorAll('.subscription-item, li, div');
+                        subscriptionCount = Array.from(items).filter(item =>
+                            item.textContent && item.textContent.trim().length > 0
+                        ).length;
+                    }}
 
-            return {{
-                stillInSubscriptions: stillInSubscriptions,
-                stillInTable: stillInTable,
-                subscriptionCount: subscriptionCount,
-                timestamp: new Date().toISOString()
-            }};
-        }})()
+                    if (marketDataGrid) {{
+                        const marketDataText = marketDataGrid.textContent || marketDataGrid.innerHTML || "";
+                        foundInTable = marketDataText.includes('{symbol}');
+                    }}
+
+                    return {{
+                        success: true,
+                        foundInSubscriptions: foundInSubscriptions,
+                        foundInTable: foundInTable,
+                        subscriptionCount: subscriptionCount,
+                        subscriptionsText: subscriptionsText.substring(0, 200),
+                        timestamp: new Date().toISOString(),
+                        pageTitle: document.title
+                    }};
+                }} catch (error) {{
+                    return {{
+                        success: false,
+                        error: error.message
+                    }};
+                }}
+            }})()
         """
-
-        check_result = await client._post(
-            f"/sessions/{session_id}/execute", {"script": check_script, "args": []}
         )
-        check_data = check_result.get("result", {})
 
-        print("\n📊 Unsubscription Status:")
-        print("=" * 30)
+        print(f"🔍 Raw verification result: {verification_result}")
 
-        if not check_data.get("stillInSubscriptions"):
+        if verification_result is None:
+            check_data = {
+                "success": False,
+                "error": "JavaScript execution returned None",
+            }
+        elif isinstance(verification_result, dict):
+            check_data = verification_result
+        else:
+            check_data = {
+                "success": False,
+                "error": f"Unexpected result type: {type(verification_result)}",
+            }
+
+        print("\n📉 Unsubscription Status:")
+        print("=" * 40)
+        print(f"🌐 Page: {check_data.get('pageTitle', 'Unknown')}")
+
+        if not check_data.get("foundInSubscriptions"):
             print(f"✅ {symbol} removed from subscriptions list")
         else:
-            print(f"❌ {symbol} still in subscriptions list")
+            print(f"❌ {symbol} still found in subscriptions list")
 
-        if not check_data.get("stillInTable"):
+        if not check_data.get("foundInTable"):
             print(f"✅ {symbol} removed from market data table")
         else:
-            print(f"❌ {symbol} still in market data table")
+            print(f"❌ {symbol} still found in market data table")
 
-        print(
-            f"📋 Remaining active subscriptions: {check_data.get('subscriptionCount', 0)}"
-        )
-        print(f"⏰ Checked at: {check_data.get('timestamp')}")
+        print(f"📋 Active subscriptions: {check_data.get('subscriptionCount', 0)}")
+        print(f"⏰ Checked at: {check_data.get('timestamp', 'Unknown')}")
 
-        success = not check_data.get("stillInSubscriptions") and not check_data.get(
-            "stillInTable"
+        success = not (
+            check_data.get("foundInSubscriptions") or check_data.get("foundInTable")
         )
+
+        if success:
+            print(f"\n🎉 Successfully unsubscribed from {symbol}!")
+        else:
+            print(f"\n⚠️ Unsubscription may not have completed.")
+
+        print(f"\n📷 Screenshots saved:")
+        print(f"  - before_unsubscribe_{symbol}.png")
+        print(f"  - after_unsubscribe_{symbol}.png")
+
         return success
+
+    except Exception as e:
+        print(f"❌ Error during unsubscription: {e}")
+        import traceback
+
+        traceback.print_exc()
+        return False
 
 
 def main():
     parser = argparse.ArgumentParser(description="Unsubscribe from market data")
     parser.add_argument("symbol", help="Symbol to unsubscribe from (e.g., AAPL, MNQ)")
+    parser.add_argument(
+        "instrument_type",
+        nargs="?",
+        default="STK",
+        help="Instrument type (STK, FUT, OPT, etc.)",
+    )
 
     args = parser.parse_args()
 

@@ -57,6 +57,8 @@ clean-python/
 
 ## Server Management Commands
 
+### MarketBridge Main Server
+
 Use the professional CLI server management tool for running MarketBridge:
 
 - `python scripts/manage_server.py start` - Start server in background
@@ -70,6 +72,19 @@ Use the professional CLI server management tool for running MarketBridge:
 - `python scripts/manage_server.py logs --error` - Show error logs
 - `python scripts/manage_server.py --help` - Show all available options
 
+### Browser Session Server
+
+Use the browser session daemon for persistent browser automation:
+
+- `python scripts/browser_session_daemon.py start` - Start browser session server
+- `python scripts/browser_session_daemon.py stop` - Stop browser session server
+- `python scripts/browser_session_daemon.py restart` - Restart browser session server
+- `python scripts/browser_session_daemon.py status` - Show daemon status
+- `python scripts/browser_session_daemon.py status -v` - Show detailed status with memory usage
+- `python scripts/browser_session_daemon.py logs` - Show recent logs
+- `python scripts/browser_session_daemon.py logs --follow` - Follow logs in real-time
+- `python scripts/browser_session_daemon.py cleanup` - Clean up old sessions and logs
+
 ### Server Management Features
 
 - **Background process management** with PID file tracking
@@ -77,6 +92,7 @@ Use the professional CLI server management tool for running MarketBridge:
 - **Automatic log redirection** to `logs/marketbridge.log` and `logs/marketbridge_error.log`
 - **Colorized CLI output** for better user experience
 - **Process monitoring** with memory usage and status information
+- **Browser session persistence** with automatic cleanup and health monitoring
 
 ## Logging Standards
 
@@ -127,3 +143,58 @@ Every commit must pass:
 1. Valid YAML syntax
 
 This template ensures that code quality, testing, and documentation standards are maintained throughout the development lifecycle.
+
+## Browser Session Automation
+
+MarketBridge includes a powerful browser automation system inspired by browser-bunny architecture:
+
+### Features
+
+- **Persistent Browser Sessions** - Sessions survive script restarts and maintain state
+- **Server-Based Control** - RESTful API for browser automation via FastAPI
+- **Session Registry** - Centralized tracking with automatic cleanup
+- **MarketBridge Integration** - Specialized methods for trading workflows
+- **Developer Tools** - Live screenshots, debugging, and session management
+
+### Quick Start
+
+```bash
+# Start the browser session server
+python scripts/browser_session_daemon.py start
+
+# Run examples
+python examples/browser_session_example.py
+
+# Check server status
+python scripts/browser_session_daemon.py status -v
+```
+
+### Python API Usage
+
+```python
+from marketbridge.browser_client import BrowserController
+
+async def automate_trading():
+    async with BrowserController() as controller:
+        # Start persistent session
+        session = await controller.start_session("trading")
+
+        # Wait for MarketBridge to load
+        await controller.wait_for_marketbridge_ready()
+
+        # Subscribe to market data
+        await controller.subscribe_to_market_data("AAPL")
+
+        # Take debug screenshot
+        await controller.take_debug_screenshot("subscription")
+```
+
+### Documentation
+
+For comprehensive documentation on browser session automation, see:
+
+- **[docs/BROWSER_SESSIONS.md](docs/BROWSER_SESSIONS.md)** - Complete architecture guide
+- **[docs/README.md](docs/README.md)** - Documentation index
+- **[examples/browser_session_example.py](examples/browser_session_example.py)** - Working examples
+
+The browser session system provides both interactive development capabilities (via existing Playwright tools) and production automation features (via the session server API).
