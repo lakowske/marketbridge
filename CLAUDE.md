@@ -47,6 +47,32 @@ clean-python/
 └── requirements.txt # Project dependencies
 ```
 
+## Setup Instructions
+
+### Initial Setup
+
+1. **Copy environment configuration:**
+   ```bash
+   cp .env.example .env
+   # Edit .env to set BROWSER_BUNNY_PATH for your system
+   ```
+
+2. **Run development setup:**
+   ```bash
+   python scripts/setup_dev.py
+   ```
+
+This will automatically:
+- Install MarketBridge dependencies
+- Install browser-bunny from your configured path
+- Validate the environment setup
+
+### Manual Setup (Alternative)
+
+If you prefer manual setup:
+- `pip install -e .` - Install MarketBridge in development mode
+- `pip install -e /path/to/browser-bunny` - Install browser-bunny dependency
+
 ## Development Commands
 
 - `pytest --cov=. --cov-report=term-missing --cov-fail-under=80 --cov-report=html` - Run tests with coverage

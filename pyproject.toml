@@ -29,7 +29,7 @@ dependencies = [
     "aiofiles>=22.1.0",
     "fastapi>=0.104.0",
     "uvicorn>=0.24.0",
-    "browser-bunny @ file:///home/seth/Software/dev/browser-bunny",
+    "python-dotenv>=1.0.0",
 ]
 
 [tool.setuptools.packages.find]
