@@ -1,5 +1,9 @@
 # Clean Python Project Template
 
+## Important Conventions
+
+**BROWSER-BUNNY ALIAS**: Throughout this project and in all conversations, `bb` is an alias for `browser-bunny`. When the user references `bb`, they are referring to the browser-bunny automation server. All commands that use `browser-bunny` can also use `bb`.
+
 ## Project Purpose
 
 This is a template for creating clean, professional Python projects that incorporate industry best practices from the start. It serves as a foundation for new Python projects with all the essential development tools and quality assurance measures pre-configured.
@@ -52,17 +56,20 @@ clean-python/
 ### Initial Setup
 
 1. **Copy environment configuration:**
+
    ```bash
    cp .env.example .env
    # Edit .env to set BROWSER_BUNNY_PATH for your system
    ```
 
-2. **Run development setup:**
+1. **Run development setup:**
+
    ```bash
    python scripts/setup_dev.py
    ```
 
 This will automatically:
+
 - Install MarketBridge dependencies
 - Install browser-bunny from your configured path
 - Validate the environment setup
@@ -70,6 +77,7 @@ This will automatically:
 ### Manual Setup (Alternative)
 
 If you prefer manual setup:
+
 - `pip install -e .` - Install MarketBridge in development mode
 - `pip install -e /path/to/browser-bunny` - Install browser-bunny dependency
 
@@ -98,16 +106,23 @@ Use the professional CLI server management tool for running MarketBridge:
 - `python scripts/manage_server.py logs --error` - Show error logs
 - `python scripts/manage_server.py --help` - Show all available options
 
-### Browser-Bunny Server
+### Browser-Bunny Server (bb)
 
-Use browser-bunny for persistent browser automation:
+**IMPORTANT**: In all conversations, `bb` is an alias for `browser-bunny`. When the user references `bb`, they are referring to browser-bunny.
 
-- `browser-bunny start` - Start browser automation server
-- `browser-bunny stop` - Stop browser automation server
-- `browser-bunny restart` - Restart browser automation server
-- `browser-bunny status` - Show server status
-- `browser-bunny logs -n 50` - Show recent logs
+Use browser-bunny (bb) for persistent browser automation:
+
+- `bb start` or `browser-bunny start` - Start browser automation server
+- `bb stop` or `browser-bunny stop` - Stop browser automation server
+- `bb restart` or `browser-bunny restart` - Restart browser automation server
+- `bb status` or `browser-bunny status` - Show server status
+- `bb logs -n 50` or `browser-bunny logs -n 50` - Show recent logs
 - Alternative: `python3 -m browser_bunny.daemon start` - Start using module directly
+
+**Session Management**: Use the existing scripts in the `examples/` directory:
+
+- `python examples/cleanup_sessions.py` - Clean up old browser sessions
+- `python examples/cleanup_sessions.py --old-only 24` - Clean sessions older than 24 hours
 
 ### Server Management Features
 
@@ -168,9 +183,13 @@ Every commit must pass:
 
 This template ensures that code quality, testing, and documentation standards are maintained throughout the development lifecycle.
 
-## Browser Automation with Browser-Bunny
+## Browser Automation with Browser-Bunny (bb)
 
-MarketBridge uses **browser-bunny** for browser automation, providing persistent browser sessions and trading workflow automation. Browser-bunny is a FastAPI-based server that manages browser sessions using Playwright, enabling iterative development and session persistence.
+**IMPORTANT**: Throughout this documentation and in all conversations, `bb` is an alias for `browser-bunny`. When the user references `bb`, they are referring to browser-bunny.
+
+**SCRIPT LOCATION**: All browser-bunny (bb) scripts should be stored in and run from the `examples/` directory. When creating or modifying bb session scripts, always use the `examples/` directory.
+
+MarketBridge uses **browser-bunny (bb)** for browser automation, providing persistent browser sessions and trading workflow automation. Browser-bunny (bb) is a FastAPI-based server that manages browser sessions using Playwright, enabling iterative development and session persistence.
 
 ### Architecture Overview
 
@@ -184,16 +203,18 @@ MarketBridge uses **browser-bunny** for browser automation, providing persistent
 
 ```bash
 # Start the browser-bunny server (required for all automation)
-browser-bunny start
+bb start  # or browser-bunny start
 
 # Check server status
-browser-bunny status
+bb status  # or browser-bunny status
 
-# Run MarketBridge automation examples
+# Run MarketBridge automation examples (from project root)
 python examples/persistent_browser.py
 python examples/marketbridge_parser.py
 python examples/cleanup_sessions.py
 ```
+
+**IMPORTANT**: Always use scripts from the `examples/` directory when working with browser-bunny (bb) sessions. Do not create new scripts outside this directory unless specifically requested.
 
 ### Core Development Patterns
 
@@ -461,13 +482,23 @@ async def automate_subscription(symbol: str, instrument_type: str):
 1. **Clean JavaScript** - Use proper JavaScript with error handling
 1. **Wait Appropriately** - Use `domcontentloaded` for most cases, add manual waits when needed
 1. **Verify Results** - Always verify parsed data matches what's visible on page
+1. **Use bb alias** - In commands and conversations, `bb` is equivalent to `browser-bunny`
+1. **Use examples/ directory** - All bb scripts should be in the `examples/` directory
 
 ### Available Examples
 
+**IMPORTANT**: All browser-bunny (bb) scripts are located in the `examples/` directory. Always look for and use existing scripts before creating new ones.
+
 - **`examples/persistent_browser.py`** - Create a persistent browser session
 - **`examples/marketbridge_parser.py`** - Parse MarketBridge UI data
-- **`examples/cleanup_sessions.py`** - Session management and cleanup
-- **`examples/browser_session_example.py`** - Comprehensive automation example
+- **`examples/cleanup_sessions.py`** - Session management and cleanup (USE THIS for cleaning sessions)
+- **`examples/complete_workflow_test.py`** - Complete MarketBridge workflow automation
+
+When working with bb sessions:
+
+1. First check if an existing script in `examples/` meets your needs
+1. Modify existing scripts rather than creating new ones when possible
+1. Always run scripts from the project root: `python examples/script_name.py`
 
 ### Documentation References
 
@@ -475,4 +506,10 @@ async def automate_subscription(symbol: str, instrument_type: str):
 - **[examples/README.md](examples/README.md)** - Example usage and patterns
 - **[Browser-Bunny Documentation](../browser-bunny/docs/)** - Core automation library docs
 
-MarketBridge leverages browser-bunny's persistent session architecture for robust, iterative browser automation that survives script restarts and enables faster development cycles.
+**Remember**:
+
+- `bb` = `browser-bunny` in all commands and conversations
+- All bb scripts are in the `examples/` directory
+- Use existing scripts like `examples/cleanup_sessions.py` rather than creating new ones
+
+MarketBridge leverages browser-bunny's (bb's) persistent session architecture for robust, iterative browser automation that survives script restarts and enables faster development cycles.

@@ -4,6 +4,7 @@ Serves the web frontend and handles HTTP requests with comprehensive logging.
 """
 
 import asyncio
+import json
 import logging
 import logging.handlers
 import os
@@ -314,6 +315,106 @@ class WebServer:
 
         return web.json_response(stats_data)
 
+    async def handle_browser_log(self, request: Request) -> Response:
+        """Handle browser console log messages (single or batch)."""
+        try:
+            # Get JSON data from request
+            data = await request.json()
+
+            # Create browser logger if it doesn't exist
+            if not hasattr(self, "browser_logger"):
+                self._setup_browser_logger()
+
+            # Handle both single logs and batch logs
+            logs_processed = 0
+
+            if "logs" in data:
+                # Batch processing
+                batch_id = data.get("batchId", "unknown")
+                logs = data.get("logs", [])
+
+                self.logger.debug(
+                    f"Processing browser log batch {batch_id} with {len(logs)} logs"
+                )
+
+                for log_entry in logs:
+                    self._process_single_log(log_entry, request)
+                    logs_processed += 1
+
+            else:
+                # Single log processing
+                self._process_single_log(data, request)
+                logs_processed = 1
+
+            return web.json_response(
+                {"status": "ok", "logged": True, "processed": logs_processed}
+            )
+
+        except Exception as e:
+            self.logger.error(f"Error handling browser log: {e}")
+            return web.json_response({"status": "error", "message": str(e)}, status=400)
+
+    def _setup_browser_logger(self):
+        """Set up the browser logger with proper formatting."""
+        browser_log_file = self.log_dir / "browser.log"
+        browser_handler = logging.handlers.RotatingFileHandler(
+            browser_log_file, maxBytes=10 * 1024 * 1024, backupCount=5  # 10MB
+        )
+
+        # Enhanced formatter with more context
+        formatter = logging.Formatter(
+            "%(asctime)s - BROWSER - %(levelname)s - "
+            "[%(source)s] - %(caller)s - %(message)s"
+        )
+        browser_handler.setFormatter(formatter)
+
+        self.browser_logger = logging.getLogger("marketbridge.browser")
+        self.browser_logger.addHandler(browser_handler)
+        self.browser_logger.setLevel(logging.DEBUG)
+        self.browser_logger.propagate = False
+
+        self.logger.info(f"Browser logger initialized, logging to: {browser_log_file}")
+
+    def _process_single_log(self, log_data: dict, request: Request):
+        """Process a single log entry."""
+        # Extract log information
+        level = log_data.get("level", "info").upper()
+        message = log_data.get("message", "")
+        source = log_data.get("source", "browser")
+        caller = log_data.get("caller", "unknown")
+        url = log_data.get("url", str(request.url.path))
+        user_agent = request.headers.get("User-Agent", "Unknown")
+
+        # Map browser log levels to Python logging levels
+        level_map = {
+            "DEBUG": logging.DEBUG,
+            "INFO": logging.INFO,
+            "WARN": logging.WARNING,
+            "WARNING": logging.WARNING,
+            "ERROR": logging.ERROR,
+            "CRITICAL": logging.CRITICAL,
+        }
+
+        log_level = level_map.get(level, logging.INFO)
+
+        # Create a custom LogRecord to include extra fields
+        record = logging.LogRecord(
+            name="marketbridge.browser",
+            level=log_level,
+            pathname="",
+            lineno=0,
+            msg=f"{message} [UA: {user_agent[:30]}...] [URL: {url}]",
+            args=(),
+            exc_info=None,
+        )
+
+        # Add custom attributes for formatter
+        record.source = source
+        record.caller = caller
+
+        # Log the record
+        self.browser_logger.handle(record)
+
     def format_uptime(self, seconds: float) -> str:
         """Format uptime in human-readable format."""
         days, remainder = divmod(int(seconds), 86400)
@@ -342,6 +443,7 @@ class WebServer:
         # Add routes
         self.app.router.add_get("/health", self.handle_health)
         self.app.router.add_get("/stats", self.handle_stats)
+        self.app.router.add_post("/api/browser-log", self.handle_browser_log)
 
         # Catch-all route for static files (must be last)
         self.app.router.add_route("*", "/{path:.*}", self.handle_static_file)

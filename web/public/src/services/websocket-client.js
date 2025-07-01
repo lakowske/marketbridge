@@ -32,7 +32,11 @@ class WebSocketClient {
         this.updateConnectionStatus('connecting');
 
         try {
-            logger.info(`Connecting to WebSocket server: ${this.url}`);
+            logger.info('Connecting to WebSocket server', {
+                url: this.url,
+                reconnectAttempts: this.reconnectAttempts,
+                maxReconnectAttempts: this.maxReconnectAttempts
+            });
             this.ws = new WebSocket(this.url);
 
             this.ws.onopen = this.handleOpen.bind(this);
@@ -41,7 +45,11 @@ class WebSocketClient {
             this.ws.onerror = this.handleError.bind(this);
 
         } catch (error) {
-            logger.error('Failed to create WebSocket connection', error);
+            logger.error('Failed to create WebSocket connection', {
+                error: error.message,
+                url: this.url,
+                stack: error.stack
+            });
             this.isConnecting = false;
             this.scheduleReconnect();
         }
@@ -77,14 +85,22 @@ class WebSocketClient {
     handleMessage(event) {
         try {
             const message = JSON.parse(event.data);
-            logger.info(`Received message: ${message.type}`, message);
+            logger.debug('Received WebSocket message', {
+                type: message.type,
+                dataLength: event.data.length,
+                messageKeys: Object.keys(message)
+            });
 
             if (this.onMessage) {
                 this.onMessage(message);
             }
 
         } catch (error) {
-            logger.error('Failed to parse WebSocket message', { error, data: event.data });
+            logger.error('Failed to parse WebSocket message', {
+                error: error.message,
+                dataPreview: event.data.substring(0, 100),
+                dataLength: event.data.length
+            });
         }
     }
 
@@ -145,7 +161,11 @@ class WebSocketClient {
 
     send(message) {
         if (!this.isConnected) {
-            logger.warning('WebSocket not connected, queuing message', message);
+            logger.warning('WebSocket not connected, queuing message', {
+                command: message.command || message.type,
+                queueLength: this.messageQueue.length,
+                messageData: message
+            });
             this.messageQueue.push(message);
             return false;
         }
@@ -153,10 +173,18 @@ class WebSocketClient {
         try {
             const messageStr = JSON.stringify(message);
             this.ws.send(messageStr);
-            logger.info(`Sent message: ${message.command || message.type}`, message);
+            logger.info('Sent WebSocket message', {
+                command: message.command || message.type,
+                messageSize: messageStr.length,
+                messageData: message
+            });
             return true;
         } catch (error) {
-            logger.error('Failed to send WebSocket message', { error, message });
+            logger.error('Failed to send WebSocket message', {
+                error: error.message,
+                command: message.command || message.type,
+                messageData: message
+            });
             return false;
         }
     }
@@ -168,10 +196,9 @@ class WebSocketClient {
         }
     }
 
-    updateConnectionStatus(status, isIBStatus = false) {
-        const prefix = isIBStatus ? 'ib' : 'ws';
-        const statusIndicator = document.getElementById(`${prefix}-status-indicator`);
-        const statusText = document.getElementById(`${prefix}-status-text`);
+    updateConnectionStatus(status) {
+        const statusIndicator = document.getElementById('status-indicator');
+        const statusText = document.getElementById('status-text');
 
         if (statusIndicator && statusText) {
             // Remove all status classes
@@ -180,46 +207,31 @@ class WebSocketClient {
             switch (status) {
                 case 'connected':
                     statusIndicator.classList.add('connected');
-                    statusText.textContent = isIBStatus ? 'IB: Connected' : 'WebSocket: Connected';
+                    statusText.textContent = 'Connected';
                     break;
                 case 'connecting':
                     statusIndicator.classList.add('connecting');
-                    statusText.textContent = isIBStatus ? 'IB: Connecting...' : 'WebSocket: Connecting...';
+                    statusText.textContent = 'Connecting...';
                     break;
                 case 'disconnected':
-                    statusText.textContent = isIBStatus ? 'IB: Not Connected' : 'WebSocket: Disconnected';
+                    statusText.textContent = 'Disconnected';
                     break;
                 case 'failed':
-                    statusText.textContent = isIBStatus ? 'IB: Connection Failed' : 'WebSocket: Connection Failed';
+                    statusText.textContent = 'Connection Failed';
                     break;
             }
         }
     }
 
     // Market data subscription methods
-    subscribeMarketData(symbol, instrumentType = 'stock', futuresParams = {}) {
-        // Build base message
+    subscribeMarketData(symbol, instrumentType = 'stock', exchange = 'SMART', currency = 'USD') {
         const message = {
             command: 'subscribe_market_data',
             symbol: symbol.toUpperCase(),
             instrument_type: instrumentType,
-            exchange: futuresParams.exchange || 'SMART',
-            currency: 'USD'
+            exchange,
+            currency
         };
-
-        // Add futures-specific parameters if applicable
-        if (instrumentType === 'future') {
-            if (futuresParams.contractMonth) {
-                message.expiry = futuresParams.contractMonth;
-            }
-            if (futuresParams.lastTradeDate) {
-                message.last_trade_date = futuresParams.lastTradeDate;
-            }
-            // Default to CME for futures if no exchange specified
-            if (!futuresParams.exchange) {
-                message.exchange = 'CME';
-            }
-        }
 
         const subscriptionKey = `${symbol}_${instrumentType}_market_data`;
         this.pendingSubscriptions.set(subscriptionKey, message);
@@ -227,27 +239,12 @@ class WebSocketClient {
         return this.send(message);
     }
 
-    subscribeTimeAndSales(symbol, instrumentType = 'stock', futuresParams = {}) {
+    subscribeTimeAndSales(symbol, instrumentType = 'stock') {
         const message = {
             command: 'subscribe_time_and_sales',
             symbol: symbol.toUpperCase(),
-            instrument_type: instrumentType,
-            exchange: futuresParams.exchange || 'SMART',
-            currency: 'USD'
+            instrument_type: instrumentType
         };
-
-        // Add futures-specific parameters if applicable
-        if (instrumentType === 'future') {
-            if (futuresParams.contractMonth) {
-                message.expiry = futuresParams.contractMonth;
-            }
-            if (futuresParams.lastTradeDate) {
-                message.last_trade_date = futuresParams.lastTradeDate;
-            }
-            if (!futuresParams.exchange) {
-                message.exchange = 'CME';
-            }
-        }
 
         const subscriptionKey = `${symbol}_${instrumentType}_time_and_sales`;
         this.pendingSubscriptions.set(subscriptionKey, message);
@@ -255,27 +252,12 @@ class WebSocketClient {
         return this.send(message);
     }
 
-    subscribeBidAsk(symbol, instrumentType = 'stock', futuresParams = {}) {
+    subscribeBidAsk(symbol, instrumentType = 'stock') {
         const message = {
             command: 'subscribe_bid_ask',
             symbol: symbol.toUpperCase(),
-            instrument_type: instrumentType,
-            exchange: futuresParams.exchange || 'SMART',
-            currency: 'USD'
+            instrument_type: instrumentType
         };
-
-        // Add futures-specific parameters if applicable
-        if (instrumentType === 'future') {
-            if (futuresParams.contractMonth) {
-                message.expiry = futuresParams.contractMonth;
-            }
-            if (futuresParams.lastTradeDate) {
-                message.last_trade_date = futuresParams.lastTradeDate;
-            }
-            if (!futuresParams.exchange) {
-                message.exchange = 'CME';
-            }
-        }
 
         const subscriptionKey = `${symbol}_${instrumentType}_bid_ask`;
         this.pendingSubscriptions.set(subscriptionKey, message);

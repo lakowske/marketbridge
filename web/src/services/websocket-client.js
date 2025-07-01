@@ -32,7 +32,11 @@ class WebSocketClient {
         this.updateConnectionStatus('connecting');
 
         try {
-            logger.info(`Connecting to WebSocket server: ${this.url}`);
+            logger.info('Connecting to WebSocket server', {
+                url: this.url,
+                reconnectAttempts: this.reconnectAttempts,
+                maxReconnectAttempts: this.maxReconnectAttempts
+            });
             this.ws = new WebSocket(this.url);
 
             this.ws.onopen = this.handleOpen.bind(this);
@@ -41,7 +45,11 @@ class WebSocketClient {
             this.ws.onerror = this.handleError.bind(this);
 
         } catch (error) {
-            logger.error('Failed to create WebSocket connection', error);
+            logger.error('Failed to create WebSocket connection', {
+                error: error.message,
+                url: this.url,
+                stack: error.stack
+            });
             this.isConnecting = false;
             this.scheduleReconnect();
         }
@@ -77,14 +85,22 @@ class WebSocketClient {
     handleMessage(event) {
         try {
             const message = JSON.parse(event.data);
-            logger.info(`Received message: ${message.type}`, message);
+            logger.debug('Received WebSocket message', {
+                type: message.type,
+                dataLength: event.data.length,
+                messageKeys: Object.keys(message)
+            });
 
             if (this.onMessage) {
                 this.onMessage(message);
             }
 
         } catch (error) {
-            logger.error('Failed to parse WebSocket message', { error, data: event.data });
+            logger.error('Failed to parse WebSocket message', {
+                error: error.message,
+                dataPreview: event.data.substring(0, 100),
+                dataLength: event.data.length
+            });
         }
     }
 
@@ -145,7 +161,11 @@ class WebSocketClient {
 
     send(message) {
         if (!this.isConnected) {
-            logger.warning('WebSocket not connected, queuing message', message);
+            logger.warning('WebSocket not connected, queuing message', {
+                command: message.command || message.type,
+                queueLength: this.messageQueue.length,
+                messageData: message
+            });
             this.messageQueue.push(message);
             return false;
         }
@@ -153,10 +173,18 @@ class WebSocketClient {
         try {
             const messageStr = JSON.stringify(message);
             this.ws.send(messageStr);
-            logger.info(`Sent message: ${message.command || message.type}`, message);
+            logger.info('Sent WebSocket message', {
+                command: message.command || message.type,
+                messageSize: messageStr.length,
+                messageData: message
+            });
             return true;
         } catch (error) {
-            logger.error('Failed to send WebSocket message', { error, message });
+            logger.error('Failed to send WebSocket message', {
+                error: error.message,
+                command: message.command || message.type,
+                messageData: message
+            });
             return false;
         }
     }

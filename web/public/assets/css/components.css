@@ -211,6 +211,10 @@
     padding: 0.5rem 0;
     border-bottom: 1px solid #334155;
     font-size: 0.75rem;
+    display: flex;
+    align-items: flex-start;
+    gap: 0.25rem;
+    flex-wrap: wrap;
 }
 
 .log-message:last-child {
@@ -250,8 +254,52 @@
     color: white;
 }
 
+.log-level.debug {
+    background: #475569;
+    color: white;
+}
+
+.log-location {
+    color: #94a3b8;
+    margin-right: 0.5rem;
+    font-size: 0.625rem;
+    font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
+}
+
 .log-content {
     color: #cbd5e1;
+}
+
+.log-data {
+    color: #64748b;
+    margin-left: 0.5rem;
+    font-style: italic;
+    font-size: 0.625rem;
+    white-space: pre-wrap;
+}
+
+/* Enhanced log message styling for different levels */
+.log-message.log-error {
+    background: rgba(220, 38, 38, 0.1);
+    border-left: 3px solid #dc2626;
+    padding-left: 0.5rem;
+}
+
+.log-message.log-warning {
+    background: rgba(217, 119, 6, 0.1);
+    border-left: 3px solid #d97706;
+    padding-left: 0.5rem;
+}
+
+.log-message.log-success {
+    background: rgba(5, 150, 105, 0.1);
+    border-left: 3px solid #059669;
+    padding-left: 0.5rem;
+}
+
+.log-message.log-debug {
+    opacity: 0.8;
+    font-size: 0.7rem;
 }
 
 /* Hidden by default, shown via JavaScript */

@@ -10,7 +10,11 @@ class MarketBridgeApp {
 
     async init() {
         try {
-            logger.info('Initializing MarketBridge application...');
+            logger.info('Initializing MarketBridge application', {
+                timestamp: new Date().toISOString(),
+                userAgent: navigator.userAgent,
+                windowSize: { width: window.innerWidth, height: window.innerHeight }
+            });
 
             // Initialize logger UI
             logger.init('message-log');
@@ -25,10 +29,16 @@ class MarketBridgeApp {
             this.connectToServer();
 
             this.isInitialized = true;
-            logger.success('MarketBridge application initialized successfully');
+            logger.success('MarketBridge application initialized successfully', {
+                componentsLoaded: ['websocket', 'subscriptionManager', 'orderManager', 'marketDataDisplay']
+            });
 
         } catch (error) {
-            logger.error('Failed to initialize application', error);
+            logger.error('Failed to initialize application', {
+                error: error.message,
+                stack: error.stack,
+                isInitialized: this.isInitialized
+            });
         }
     }
 
@@ -105,16 +115,6 @@ class MarketBridgeApp {
     handleConnectionStatus(message) {
         if (message.status === 'connected') {
             logger.success(`IB connection established. Next order ID: ${message.next_order_id}`);
-            // Update IB status indicator
-            window.wsClient.updateConnectionStatus('connected', true);
-        } else if (message.status === 'disconnected') {
-            logger.warning('IB connection lost');
-            // Update IB status indicator
-            window.wsClient.updateConnectionStatus('disconnected', true);
-        } else if (message.status === 'connecting') {
-            logger.info(`IB connection status: ${message.status}`);
-            // Update IB status indicator
-            window.wsClient.updateConnectionStatus('connecting', true);
         } else {
             logger.info(`IB connection status: ${message.status}`);
         }
