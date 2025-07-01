@@ -7,14 +7,6 @@ Uses browser-bunny client to clean up all browser sessions.
 
 import asyncio
 import sys
-from pathlib import Path
-
-# Add the src directory to the Python path
-script_dir = Path(__file__).parent
-project_root = script_dir.parent
-src_dir = project_root / "src"
-sys.path.insert(0, str(src_dir))
-
 from browser_bunny.client import BrowserClient
 
 

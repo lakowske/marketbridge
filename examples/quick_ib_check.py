@@ -9,8 +9,8 @@ async def quick_ib_check():
     """Quick check of IB status using persistent session."""
     print("🔍 Checking MarketBridge IB status...")
     
-    # Get or create persistent session for MarketBridge monitoring
-    manager = await get_persistent_session("marketbridge_monitor")
+    # Get or create persistent session for MarketBridge
+    manager = await get_persistent_session("marketbridge")
     
     try:
         # Navigate to MarketBridge UI (only if not already there)

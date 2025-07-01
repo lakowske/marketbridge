@@ -1,272 +1,150 @@
-# MarketBridge Browser Automation Examples
+# MarketBridge Examples
 
-This directory contains example scripts for automating MarketBridge using browser-bunny for persistent browser sessions.
+Essential scripts for MarketBridge automation using browser-bunny persistent sessions.
 
-## Browser Automation Examples
+## Quick Start
 
-### Browser Session Management
+1. **Start servers:**
+   ```bash
+   python scripts/manage_server.py start    # MarketBridge server
+   browser-bunny start                      # Browser automation server
+   ```
 
+2. **Check connection:**
+   ```bash
+   python examples/quick_ib_check.py
+   ```
+
+3. **Subscribe to market data:**
+   ```bash
+   python examples/subscribe.py AAPL STK    # Apple stock
+   python examples/subscribe.py MNQ FUT     # Micro Nasdaq futures
+   ```
+
+4. **Unsubscribe:**
+   ```bash
+   python examples/unsubscribe.py AAPL
+   ```
+
+## Core Examples
+
+### Connection Status
 ```bash
-# Comprehensive browser automation example
-python examples/browser_session_example.py
+python examples/quick_ib_check.py
 ```
-
-Shows complete browser session management, MarketBridge automation, and session persistence using browser-bunny.
-
-### Persistent Browser Session
-
-```bash
-# Create a persistent browser session for manual interaction
-python examples/persistent_browser.py
-```
-
-Opens a browser window that stays open for manual interaction. The session persists and can be reused by other scripts.
-
-### MarketBridge UI Parser
-
-```bash
-# Parse data from MarketBridge web interface
-python examples/marketbridge_parser.py
-
-# Debug DOM structure
-python examples/marketbridge_parser.py --debug
-```
-
-Demonstrates parsing MarketBridge UI data using browser-bunny patterns, similar to news site parsers.
-
-### Session Cleanup
-
-```bash
-# Clean up all browser sessions
-python examples/cleanup_sessions.py
-
-# Clean up only old sessions (24+ hours)
-python examples/cleanup_sessions.py --old-only
-
-# Clean up sessions older than specific hours
-python examples/cleanup_sessions.py --old-only 48
-```
-
-Browser session management and cleanup utilities.
-
-## General Market Data Scripts
+Quick check of WebSocket and IB connection status with real-time feedback.
 
 ### Subscribe to Market Data
-
 ```bash
 python examples/subscribe.py <SYMBOL> <INSTRUMENT_TYPE>
 ```
 
 **Examples:**
-
 ```bash
-# Subscribe to Apple stock
-python examples/subscribe.py AAPL STK
-
-# Subscribe to SPY options (if supported)
-python examples/subscribe.py SPY OPT
-
-# For futures, use the specialized script below
-```
-
-### Subscribe to Futures (Recommended)
-
-```bash
-python examples/subscribe_futures.py <SYMBOL> [--expiry EXPIRY]
-```
-
-**Examples:**
-
-```bash
-# Subscribe to Micro Nasdaq futures (auto-detects contract)
-python examples/subscribe_futures.py MNQ
-
-# Subscribe to specific expiry
-python examples/subscribe_futures.py MNQ --expiry H25
-
-# Other popular futures
-python examples/subscribe_futures.py ES    # S&P 500 futures
-python examples/subscribe_futures.py CL    # Crude Oil futures
-python examples/subscribe_futures.py GC    # Gold futures
+python examples/subscribe.py AAPL STK     # Apple stock
+python examples/subscribe.py MNQ FUT      # Micro Nasdaq futures
+python examples/subscribe.py TSLA STK     # Tesla stock
 ```
 
 **Supported Instrument Types:**
-
 - `STK` - Stocks
-- `FUT` - Futures
+- `FUT` - Futures  
 - `OPT` - Options
 - `CASH` - Forex
 - `IND` - Indices
-- `CFD` - CFDs
-- `BOND` - Bonds
-- `CMDTY` - Commodities
 
 ### Unsubscribe from Market Data
-
 ```bash
 python examples/unsubscribe.py <SYMBOL>
 ```
 
 **Examples:**
-
 ```bash
-# Unsubscribe from Apple stock
-python examples/unsubscribe.py AAPL
-
-# Unsubscribe from Micro Nasdaq futures
-python examples/unsubscribe.py MNQ
+python examples/unsubscribe.py AAPL      # Unsubscribe from Apple
+python examples/unsubscribe.py MNQ       # Unsubscribe from Micro Nasdaq
 ```
 
 ## Utility Scripts
 
-### Check Market Data Status
-
+### Session Management
 ```bash
-python examples/check_market_data.py
+python examples/cleanup_sessions.py      # Clean up all browser sessions
 ```
 
-Shows current market data subscriptions and live data.
-
-### Quick Connectivity Tests
-
+### Complete Workflow Test
 ```bash
-# Quick IB connectivity check
-python examples/quick_ib_check.py
+python examples/complete_workflow_test.py AAPL STK    # Test full subscribe/unsubscribe cycle
+python examples/complete_workflow_test.py MNQ FUT     # Test with futures
+```
 
-# Quick MarketBridge probe
-python examples/quick_probe.py
+Comprehensive test that performs subscribe → verify → unsubscribe → verify cycle.
+
+## Browser Automation Features
+
+- **Persistent Sessions** - Single `"marketbridge"` session shared across all scripts
+- **Session Reuse** - Browser stays open between script runs for faster execution
+- **Visual Debugging** - Screenshots taken at key steps for troubleshooting
+- **Proper UI Integration** - Correct checkbox selection and form interaction
+- **WebSocket Monitoring** - Verify backend communication for unsubscribe operations
+
+## Usage Patterns
+
+### Basic Session Usage
+```python
+from browser_bunny.persistent_session_manager import get_persistent_session
+
+async def my_automation():
+    # All examples use the same session name for consistency
+    manager = await get_persistent_session("marketbridge")
+    try:
+        await manager.navigate_to("http://localhost:8080")
+        # Your automation code here
+    finally:
+        await manager.cleanup()  # Leaves session open for reuse
+```
+
+### Subscribe/Unsubscribe Workflow
+1. **Subscribe** - Fill form, click subscribe button
+2. **Verify** - Check subscription appears in UI with checkbox
+3. **Unsubscribe** - Select checkbox, click unsubscribe button  
+4. **Verify** - Confirm WebSocket message sent and subscription removed
+
+## Troubleshooting
+
+### Connection Issues
+```bash
+python examples/quick_ib_check.py    # Check WebSocket and IB status
+```
+
+Expected output:
+```
+✅ All systems connected
+  WS: WebSocket: Connected
+  IB: IB: Connected
+```
+
+### Session Issues
+```bash
+python examples/cleanup_sessions.py    # Clean up stuck sessions
+```
+
+### Server Issues
+```bash
+python scripts/manage_server.py status    # Check MarketBridge server
+browser-bunny status                      # Check browser automation server
 ```
 
 ## Prerequisites
 
-1. **Start MarketBridge Server:**
-
-   ```bash
-   python scripts/manage_server.py start
-   ```
-
-1. **Start Browser-Bunny Server:**
-
-   ```bash
-   # Option 1: If browser-bunny installed globally
-   browser-bunny start
-
-   # Option 2: Using module from source
-   cd /home/seth/Software/dev/browser-bunny
-   source .venv/bin/activate
-   python3 -m browser_bunny.daemon start
-   ```
-
-1. **Ensure IB TWS/Gateway is running** and connected to MarketBridge.
-
-## Browser Automation Features
-
-- **Browser-Bunny Integration** - Uses browser-bunny for robust browser automation
-- **Persistent Sessions** - Browser sessions survive script restarts and maintain state
-- **Session Registry** - Centralized tracking with automatic cleanup
-- **MarketBridge Integration** - Specialized methods for trading workflows
-- **Developer Tools** - Screenshots, debugging, and session management
-- **Clean Architecture** - No code duplication, leverages browser-bunny capabilities
-
-## Browser Session Patterns
-
-### Basic Persistent Session Usage
-
-```python
-from browser_bunny.persistent_session_manager import get_persistent_session
-
-async def automate_marketbridge():
-    # Get or create persistent session that survives script restarts
-    manager = await get_persistent_session("my_session")
-    try:
-        await manager.navigate_to("http://localhost:8080")
-        await manager.screenshot("marketbridge.png")
-        data = await manager.execute_js("return document.title")
-        return data
-    finally:
-        # Don't cleanup - leave persistent session open for reuse
-        await manager.cleanup()
-```
-
-### MarketBridge-Specific Automation
-
-```python
-from marketbridge.browser_client import BrowserController
-from browser_bunny.persistent_session_manager import get_persistent_session
-
-async def trading_automation():
-    # Option 1: Use MarketBridge wrapper (convenience methods)
-    async with BrowserController() as controller:
-        session = await controller.start_session("trading", auto_navigate=True)
-        await controller.wait_for_marketbridge_ready()
-        await controller.subscribe_to_market_data("AAPL")
-        await controller.take_debug_screenshot("subscribed")
-
-    # Option 2: Use persistent session directly (more control)
-    manager = await get_persistent_session("trading_session")
-    await manager.navigate_to("http://localhost:8080")
-    await manager.screenshot("trading_start.png")
-    # Session stays alive for reuse
-```
-
-## Troubleshooting
-
-### Browser Automation Issues
-
-**Problem**: "Connection refused" or browser automation fails
-
-**Solutions**:
-
-1. **Check browser-bunny server**: `browser-bunny status`
-1. **Start browser-bunny**: `browser-bunny start`
-1. **Check logs**: `browser-bunny logs -n 50`
-1. **Test server**: `curl http://localhost:9247/health`
-
-### MNQ/Futures Subscription Errors
-
-**Problem**: "No security definition has been found for the request"
-
-**Cause**: Futures require specific contract details (exchange, expiration month)
-
-**Solutions**:
-
-1. **Use the futures script**: `python examples/subscribe_futures.py MNQ`
-1. **Check IB permissions**: Ensure you have CME market data subscriptions
-1. **Try specific expiry**: `python examples/subscribe_futures.py MNQ --expiry H25`
-
-### Common Expiry Codes
-
-- `H25` = March 2025
-- `M25` = June 2025
-- `U25` = September 2025
-- `Z25` = December 2025
-
-### Session Management Issues
-
-**Problem**: Sessions not persisting or conflicting
-
-**Solutions**:
-
-1. **Clean up old sessions**: `python examples/cleanup_sessions.py --old-only`
-1. **Check session registry**: Use browser-bunny's session listing
-1. **Use unique session names**: Avoid conflicts with descriptive names
-
-## Development Patterns
-
-Following browser-bunny's development patterns:
-
-1. **Persistent Session Management** - Use `get_persistent_session()` for sessions that survive script restarts
-1. **Screenshots** - Take screenshots at each step for debugging
-1. **DOM Inspection** - Use JavaScript to inspect and parse page structure
-1. **Error Handling** - Always use try/finally blocks with cleanup
-1. **Iterative Development** - Build parsers incrementally, test each component
-1. **Session Reuse** - Sessions stay alive between parser runs for faster development
+1. **MarketBridge server running**: `python scripts/manage_server.py start`
+2. **Browser-bunny server running**: `browser-bunny start`  
+3. **IB TWS/Gateway connected** to MarketBridge
+4. **Market data permissions** for the instruments you want to subscribe to
 
 ## Notes
 
-- Scripts automatically map IB instrument types (STK, FUT) to UI values (stock, future)
-- Browser sessions persist across script runs for better performance using browser-bunny
-- Market data appears in both subscription list and data table when successful
-- Futures contracts require specific contract specifications including exchange and expiration month
-- The `subscribe_futures.py` script automatically tries multiple contract variations to find valid ones
-- Browser automation now uses browser-bunny for enhanced features and persistence
+- All scripts use the consistent session name `"marketbridge"` for seamless workflow
+- Browser session persists between script runs for better performance
+- Unsubscribe requires proper checkbox selection before clicking unsubscribe button
+- WebSocket messages are monitored to ensure backend receives unsubscribe commands
+- Screenshots are saved for debugging at key workflow steps

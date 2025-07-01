@@ -25,8 +25,8 @@ async def subscribe_to_symbol(symbol: str, instrument_type: str):
         instrument_type.upper(), instrument_type.lower()
     )
 
-    # Use persistent session for subscriptions
-    manager = await get_persistent_session("marketbridge_subscriptions")
+    # Use persistent session for MarketBridge
+    manager = await get_persistent_session("marketbridge")
 
     try:
         print(f"📈 Subscribing to {symbol} ({instrument_type.upper()})...")
@@ -218,7 +218,7 @@ async def subscribe_to_symbol(symbol: str, instrument_type: str):
         print(f"\n📷 Screenshots saved:")
         print(f"  - before_subscribe_{symbol}.png")
         print(f"  - after_subscribe_{symbol}.png")
-        print(f"\n💻 Session 'marketbridge_subscriptions' remains open for debugging")
+        print(f"\n💻 Session 'marketbridge' remains open for debugging")
 
         return success
 

@@ -9,8 +9,8 @@ from browser_bunny.persistent_session_manager import get_persistent_session
 
 async def unsubscribe_from_symbol(symbol: str):
     """Unsubscribe from market data for a given symbol using browser-bunny."""
-    # Use persistent session for unsubscriptions (same as subscriptions)
-    manager = await get_persistent_session("marketbridge_subscriptions")
+    # Use persistent session for MarketBridge
+    manager = await get_persistent_session("marketbridge")
 
     try:
         print(f"📉 Unsubscribing from {symbol}...")
