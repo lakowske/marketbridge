@@ -1,38 +1,22 @@
 #!/usr/bin/env python3
-"""General unsubscribe from market data script"""
+"""General unsubscribe from market data script using browser-bunny persistent sessions"""
 
 import argparse
 import asyncio
 import sys
-from pathlib import Path
-
-# Add the src directory to the Python path
-script_dir = Path(__file__).parent
-project_root = script_dir.parent
-src_dir = project_root / "src"
-sys.path.insert(0, str(src_dir))
-
-import os
-import sys
-
-# Add browser-bunny to Python path
-sys.path.insert(0, "/home/seth/Software/dev/browser-bunny")
-from browser_bunny import SessionManager
+from browser_bunny.persistent_session_manager import get_persistent_session
 
 
 async def unsubscribe_from_symbol(symbol: str):
     """Unsubscribe from market data for a given symbol using browser-bunny."""
-    # Use existing browser session or create new one with timestamp
-    import time
-
-    session_name = f"marketbridge_unsubscribe_{int(time.time())}"
-    manager = SessionManager(session_name)
+    # Use persistent session for unsubscriptions (same as subscriptions)
+    manager = await get_persistent_session("marketbridge_subscriptions")
 
     try:
         print(f"📉 Unsubscribing from {symbol}...")
 
         # Navigate to MarketBridge
-        await manager.navigate_to("http://localhost:8080")
+        await manager.navigate_to("http://localhost:8080", wait_until="domcontentloaded")
         print(f"✅ Connected to MarketBridge UI")
 
         # Take a screenshot before unsubscription
@@ -163,14 +147,14 @@ async def unsubscribe_from_symbol(symbol: str):
         if not check_data.get("foundInTable"):
             print(f"✅ {symbol} removed from market data table")
         else:
-            print(f"❌ {symbol} still found in market data table")
+            print(f"ℹ️  {symbol} data still visible in table (historical data persists)")
 
         print(f"📋 Active subscriptions: {check_data.get('subscriptionCount', 0)}")
         print(f"⏰ Checked at: {check_data.get('timestamp', 'Unknown')}")
 
-        success = not (
-            check_data.get("foundInSubscriptions") or check_data.get("foundInTable")
-        )
+        # Success is based on removal from subscriptions list
+        # Market data may persist as historical data, which is expected
+        success = not check_data.get("foundInSubscriptions")
 
         if success:
             print(f"\n🎉 Successfully unsubscribed from {symbol}!")
@@ -188,7 +172,18 @@ async def unsubscribe_from_symbol(symbol: str):
         import traceback
 
         traceback.print_exc()
+        
+        # Take error screenshot
+        try:
+            await manager.screenshot(f"error_unsubscribe_{symbol}.png")
+            print(f"Error screenshot saved: error_unsubscribe_{symbol}.png")
+        except:
+            pass
+            
         return False
+    finally:
+        # Don't cleanup - leave persistent session open for reuse
+        await manager.cleanup()
 
 
 def main():

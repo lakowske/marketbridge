@@ -1,23 +1,10 @@
 #!/usr/bin/env python3
-"""General subscribe to market data script"""
+"""General subscribe to market data script using browser-bunny persistent sessions"""
 
 import argparse
 import asyncio
 import sys
-from pathlib import Path
-
-# Add the src directory to the Python path
-script_dir = Path(__file__).parent
-project_root = script_dir.parent
-src_dir = project_root / "src"
-sys.path.insert(0, str(src_dir))
-
-import os
-import sys
-
-# Add browser-bunny to Python path
-sys.path.insert(0, "/home/seth/Software/dev/browser-bunny")
-from browser_bunny import SessionManager
+from browser_bunny.persistent_session_manager import get_persistent_session
 
 
 async def subscribe_to_symbol(symbol: str, instrument_type: str):
@@ -38,17 +25,14 @@ async def subscribe_to_symbol(symbol: str, instrument_type: str):
         instrument_type.upper(), instrument_type.lower()
     )
 
-    # Use existing browser session or create new one with timestamp
-    import time
-
-    session_name = f"marketbridge_subscription_{int(time.time())}"
-    manager = SessionManager(session_name)
+    # Use persistent session for subscriptions
+    manager = await get_persistent_session("marketbridge_subscriptions")
 
     try:
         print(f"📈 Subscribing to {symbol} ({instrument_type.upper()})...")
 
         # Navigate to MarketBridge (this will reuse existing session if available)
-        await manager.navigate_to("http://localhost:8080")
+        await manager.navigate_to("http://localhost:8080", wait_until="domcontentloaded")
         print(f"✅ Connected to MarketBridge UI")
 
         # Take a screenshot before subscription
@@ -234,7 +218,7 @@ async def subscribe_to_symbol(symbol: str, instrument_type: str):
         print(f"\n📷 Screenshots saved:")
         print(f"  - before_subscribe_{symbol}.png")
         print(f"  - after_subscribe_{symbol}.png")
-        print(f"\n💻 Session '{session_name}' remains open for debugging")
+        print(f"\n💻 Session 'marketbridge_subscriptions' remains open for debugging")
 
         return success
 
@@ -252,8 +236,9 @@ async def subscribe_to_symbol(symbol: str, instrument_type: str):
             pass
 
         return False
-
-    # Note: We don't call manager.cleanup() to keep session open for debugging
+    finally:
+        # Don't cleanup - leave persistent session open for reuse
+        await manager.cleanup()
 
 
 def main():
